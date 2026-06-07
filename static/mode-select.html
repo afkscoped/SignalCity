@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SIGNAL CITY — Choose Your Mode</title>
+  <meta name="description" content="Choose between Map Explorer and City Builder modes in Signal City.">
+  <link rel="stylesheet" href="/static/css/civ6-theme.css">
+</head>
+<body>
+  <div class="mode-select-container" id="mode-page">
+    <div style="text-align:center;width:90%;max-width:960px;">
+      <!-- Header -->
+      <div class="auth-logo" style="margin-bottom:40px;">
+        <h1>SIGNAL CITY</h1>
+        <div class="subtitle" id="welcome-text">Choose Your Expedition</div>
+      </div>
+
+      <!-- Profile bar -->
+      <div style="display:flex;align-items:center;justify-content:center;gap:24px;margin-bottom:32px;flex-wrap:wrap;">
+        <div class="resource-item"><span class="icon" id="prof-avatar">🧙</span> <span class="value" id="prof-name">Player</span></div>
+        <div class="resource-item"><span class="icon">⭐</span> Lv.<span class="value" id="prof-level">1</span></div>
+        <div class="resource-item"><span class="icon">🪙</span> <span class="value" id="prof-coins">500</span></div>
+        <div class="resource-item"><span class="icon">🧪</span> <span class="value" id="prof-rp">100</span></div>
+        <button class="civ-btn civ-btn-sm civ-btn-danger" onclick="logout()">Logout</button>
+      </div>
+
+      <!-- Mode Cards -->
+      <div class="mode-select-grid">
+        <div class="mode-card animate-slide-up" onclick="window.location.href='/mode1'" id="card-mode1">
+          <div class="mode-icon">🗺️</div>
+          <div class="mode-title">Signal Map</div>
+          <div class="mode-desc">Explore real Indian cities on an interactive map. Run algorithms on actual road networks.</div>
+          <div class="mode-features">
+            <div class="mode-feature">Real OpenStreetMap data for 10 Indian cities</div>
+            <div class="mode-feature">Leaflet map with algorithm visualization overlays</div>
+            <div class="mode-feature">33 algorithms across 7 categories</div>
+            <div class="mode-feature">NLP command bar — describe what you need in English</div>
+            <div class="mode-feature">Algorithm efficiency grading (S/A/B/C/D)</div>
+          </div>
+        </div>
+
+        <div class="mode-card animate-slide-up" onclick="window.location.href='/mode2'" id="card-mode2" style="animation-delay:0.1s;">
+          <div class="mode-icon">🏰</div>
+          <div class="mode-title">Signal Forge</div>
+          <div class="mode-desc">Build your own city from scratch. Place buildings, roads, and infrastructure on an isometric grid.</div>
+          <div class="mode-features">
+            <div class="mode-feature">Isometric hex-grid city builder</div>
+            <div class="mode-feature">Economy system: coins, power, population, happiness</div>
+            <div class="mode-feature">Turn-based gameplay with Civ-style End Turn</div>
+            <div class="mode-feature">Algorithmic building — MST for power, Dijkstra for roads</div>
+            <div class="mode-feature">Weather events and district management</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Leaderboard preview -->
+      <div style="margin-top:32px;max-width:500px;margin-left:auto;margin-right:auto;">
+        <div style="font-family:var(--font-title);font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:var(--gold);margin-bottom:10px;">
+          🏆 Top Strategists
+        </div>
+        <div id="leaderboard-preview" style="font-size:12px;color:var(--text-dim);">Loading...</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Check auth
+    (function() {
+      const token = localStorage.getItem('sc_token');
+      if (!token) { window.location.href = '/auth'; return; }
+      const profile = JSON.parse(localStorage.getItem('sc_profile') || '{}');
+      document.getElementById('prof-avatar').textContent = profile.avatar || '🧙';
+      document.getElementById('prof-name').textContent = profile.username || 'Player';
+      document.getElementById('prof-level').textContent = profile.level || 1;
+      document.getElementById('prof-coins').textContent = profile.coins || 500;
+      document.getElementById('prof-rp').textContent = profile.research_points || 100;
+      document.getElementById('welcome-text').textContent = `Welcome, ${profile.username || 'Strategist'}`;
+    })();
+
+    function logout() {
+      localStorage.removeItem('sc_token');
+      localStorage.removeItem('sc_profile');
+      window.location.href = '/auth';
+    }
+
+    // Load leaderboard
+    (async function() {
+      try {
+        const res = await fetch('/api/leaderboard');
+        const data = await res.json();
+        const el = document.getElementById('leaderboard-preview');
+        if (data.length === 0) {
+          el.textContent = 'No entries yet. Be the first!';
+          return;
+        }
+        el.innerHTML = data.slice(0, 5).map((e, i) =>
+          `<div class="leaderboard-row">
+            <div class="leaderboard-rank">#${i+1}</div>
+            <div class="leaderboard-name">${e.avatar || '🧙'} ${e.username}</div>
+            <div class="leaderboard-score">${(e.avg_efficiency || 0).toFixed(1)}%</div>
+          </div>`
+        ).join('');
+      } catch (e) {
+        document.getElementById('leaderboard-preview').textContent = 'Could not load leaderboard.';
+      }
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SIGNAL CITY — Algorithm Strategy Game</title>
+  <meta name="description" content="Build cities with real algorithms. An educational strategy game powered by Prim, Dijkstra, Max-Flow, and cutting-edge graph algorithms on real OpenStreetMap data.">
+  <link rel="stylesheet" href="/static/css/civ6-theme.css">
+</head>
+<body>
+  <div class="auth-container">
+    <div style="text-align:center;">
+      <div class="auth-logo">
+        <h1>SIGNAL CITY</h1>
+        <div class="subtitle">Loading...</div>
+      </div>
+    </div>
+  </div>
+  <script>
+    // Router: check auth state and redirect
+    (function() {
+      const token = localStorage.getItem('sc_token');
+      if (token) {
+        window.location.replace('/select');
+      } else {
+        window.location.replace('/auth');
+      }
+    })();
+  </script>
+</body>
+</html>

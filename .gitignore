@@ -1,0 +1,15 @@
+.env
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.vscode/
+.idea/
+*.log
+data/osmnx_cache/
+data/graphs/
+data/pois/
+data/cities/
+cache/
+server_smoke.err.log
+server_smoke.out.log

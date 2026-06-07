@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SIGNAL CITY — Login</title>
+  <meta name="description" content="Sign in to Signal City - Build cities with real algorithms.">
+  <link rel="stylesheet" href="/static/css/civ6-theme.css">
+</head>
+<body>
+  <div class="auth-container" id="auth-page">
+    <div class="auth-box animate-slide-up">
+      <div class="auth-logo">
+        <h1>SIGNAL CITY</h1>
+        <div class="subtitle">Build Cities with Algorithms</div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="auth-tabs">
+        <button class="auth-tab active" onclick="switchTab('login')" id="tab-login">Login</button>
+        <button class="auth-tab" onclick="switchTab('register')" id="tab-register">Register</button>
+      </div>
+
+      <!-- Error -->
+      <div class="auth-error" id="auth-error"></div>
+
+      <!-- Login Form -->
+      <div id="form-login">
+        <div class="form-group">
+          <label>Username</label>
+          <input type="text" class="civ-input" id="login-username" placeholder="Enter your username" autocomplete="username">
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" class="civ-input" id="login-password" placeholder="Enter your password" autocomplete="current-password">
+        </div>
+        <button class="civ-btn-primary w-full" onclick="doLogin()" id="btn-login" style="width:100%;margin-top:8px;">
+          Enter the City
+        </button>
+      </div>
+
+      <!-- Register Form -->
+      <div id="form-register" style="display:none;">
+        <div class="form-group">
+          <label>Username</label>
+          <input type="text" class="civ-input" id="reg-username" placeholder="Choose a username" autocomplete="username">
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" class="civ-input" id="reg-email" placeholder="your@email.com" autocomplete="email">
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" class="civ-input" id="reg-password" placeholder="At least 4 characters" autocomplete="new-password">
+        </div>
+
+        <label style="font-family:var(--font-title);font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-dim);display:block;margin-bottom:8px;">Choose Your Guild</label>
+        <div class="guild-grid">
+          <div class="guild-card selected" onclick="selectGuild(this,'Algorithm Mage')" data-guild="Algorithm Mage">
+            <div class="emoji">🧙</div>
+            <div class="name">Algorithm Mage</div>
+          </div>
+          <div class="guild-card" onclick="selectGuild(this,'Flow Architect')" data-guild="Flow Architect">
+            <div class="emoji">🏗️</div>
+            <div class="name">Flow Architect</div>
+          </div>
+          <div class="guild-card" onclick="selectGuild(this,'Chrono Strategist')" data-guild="Chrono Strategist">
+            <div class="emoji">⏳</div>
+            <div class="name">Chrono Strategist</div>
+          </div>
+          <div class="guild-card" onclick="selectGuild(this,'Data Ranger')" data-guild="Data Ranger">
+            <div class="emoji">🌲</div>
+            <div class="name">Data Ranger</div>
+          </div>
+        </div>
+
+        <button class="civ-btn-primary w-full" onclick="doRegister()" id="btn-register" style="width:100%;margin-top:8px;">
+          Create Account
+        </button>
+      </div>
+
+      <div style="text-align:center;margin-top:20px;">
+        <button class="civ-btn civ-btn-sm" onclick="guestLogin()" style="font-size:10px;opacity:0.7;">
+          Continue as Guest
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-container" id="toast-container"></div>
+
+  <script>
+    let selectedGuild = 'Algorithm Mage';
+
+    // Check if already logged in
+    (function() {
+      const token = localStorage.getItem('sc_token');
+      if (token) {
+        window.location.href = '/select';
+      }
+    })();
+
+    function switchTab(tab) {
+      document.getElementById('tab-login').classList.toggle('active', tab === 'login');
+      document.getElementById('tab-register').classList.toggle('active', tab === 'register');
+      document.getElementById('form-login').style.display = tab === 'login' ? 'block' : 'none';
+      document.getElementById('form-register').style.display = tab === 'register' ? 'block' : 'none';
+      hideError();
+    }
+
+    function selectGuild(el, guild) {
+      document.querySelectorAll('.guild-card').forEach(c => c.classList.remove('selected'));
+      el.classList.add('selected');
+      selectedGuild = guild;
+    }
+
+    function showError(msg) {
+      const el = document.getElementById('auth-error');
+      el.textContent = msg;
+      el.style.display = 'block';
+    }
+    function hideError() {
+      document.getElementById('auth-error').style.display = 'none';
+    }
+
+    function showToast(msg, type = 'info') {
+      const c = document.getElementById('toast-container');
+      const t = document.createElement('div');
+      t.className = `toast ${type}`;
+      t.textContent = msg;
+      c.appendChild(t);
+      setTimeout(() => t.remove(), 4000);
+    }
+
+    async function doLogin() {
+      hideError();
+      const username = document.getElementById('login-username').value.trim();
+      const password = document.getElementById('login-password').value;
+      if (!username || !password) { showError('Please fill all fields'); return; }
+
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password }),
+        });
+        const data = await res.json();
+        if (!res.ok) { showError(data.detail || 'Login failed'); return; }
+
+        localStorage.setItem('sc_token', data.token);
+        localStorage.setItem('sc_profile', JSON.stringify(data.profile));
+        showToast('Welcome back, ' + data.profile.username + '!', 'success');
+        setTimeout(() => window.location.href = '/select', 500);
+      } catch (e) {
+        showError('Connection error. Is the server running?');
+      }
+    }
+
+    async function doRegister() {
+      hideError();
+      const username = document.getElementById('reg-username').value.trim();
+      const email = document.getElementById('reg-email').value.trim();
+      const password = document.getElementById('reg-password').value;
+      if (!username || !email || !password) { showError('Please fill all fields'); return; }
+
+      try {
+        const res = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, email, password, guild: selectedGuild }),
+        });
+        const data = await res.json();
+        if (!res.ok) { showError(data.detail || 'Registration failed'); return; }
+
+        localStorage.setItem('sc_token', data.token);
+        localStorage.setItem('sc_profile', JSON.stringify(data.profile));
+        showToast('Welcome to Signal City, ' + data.profile.username + '!', 'success');
+        setTimeout(() => window.location.href = '/select', 500);
+      } catch (e) {
+        showError('Connection error. Is the server running?');
+      }
+    }
+
+    function guestLogin() {
+      const guestProfile = {
+        _id: 'guest', username: 'Guest', guild: 'Algorithm Mage',
+        avatar: '🧙', level: 1, xp: 0, xp_to_next: 150,
+        coins: 500, research_points: 100, happiness: 75,
+        population: 100, current_turn: 1,
+        unlocked_algos: ['prim', 'dijkstra', 'fcfs'],
+        completed_quests: [], achievements: [],
+      };
+      localStorage.setItem('sc_token', 'guest');
+      localStorage.setItem('sc_profile', JSON.stringify(guestProfile));
+      window.location.href = '/select';
+    }
+
+    // Enter key to submit
+    document.getElementById('login-password')?.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+    document.getElementById('reg-password')?.addEventListener('keydown', e => { if (e.key === 'Enter') doRegister(); });
+  </script>
+</body>
+</html>

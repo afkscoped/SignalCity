@@ -1,0 +1,1691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SIGNAL CITY — Map Explorer</title>
+  <meta name="description" content="Explore real Indian cities and run algorithms on actual road networks.">
+  <link rel="stylesheet" href="/static/css/civ6-theme.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body>
+  <!-- ═══ Resource Bar (Top HUD) ═══ -->
+  <div class="resource-bar" id="resource-bar">
+    <div class="resource-group">
+      <div style="font-family:var(--font-title);font-size:14px;color:var(--gold-light);letter-spacing:2px;cursor:pointer;" onclick="window.location.href='/select'">
+        ◀ SIGNAL CITY
+      </div>
+      <div class="resource-item"><span class="icon" id="hud-avatar">🧙</span> <span class="value" id="hud-username">Player</span></div>
+      <div class="resource-item"><span class="icon">⭐</span> Lv.<span class="value" id="hud-level">1</span></div>
+    </div>
+    <div class="resource-group">
+      <div class="resource-item"><span class="icon">🪙</span> <span class="value" id="hud-coins">500</span></div>
+      <div class="resource-item"><span class="icon">🧪</span> <span class="value" id="hud-rp">100</span></div>
+      <div class="resource-item"><span class="icon">😊</span> <span class="value" id="hud-happiness">75</span>%</div>
+      <div class="resource-item"><span class="icon">👥</span> <span class="value" id="hud-pop">100</span></div>
+      <div class="resource-item" style="color:var(--text-dim);">Turn <span class="value" id="hud-turn">1</span></div>
+      <div class="resource-item" id="weather-hud" style="cursor: help; margin-left: 8px; padding-left: 8px; border-left: 1px solid rgba(197, 160, 89, 0.2);" title="Weather event details. Set OWM_API_KEY in .env for live weather!">
+        <span class="icon" id="weather-hud-icon">☀️</span>
+        <span class="value" id="weather-hud-type" style="font-family:var(--font-title); font-size:11px;">Clear</span>
+        <span id="weather-hud-desc" style="font-size:9px; color:var(--text-dim); margin-left:3px;">(1.0x)</span>
+      </div>
+    </div>
+    <div class="resource-group">
+      <div style="width:100px;">
+        <div style="font-size:9px;color:var(--text-muted);display:flex;justify-content:space-between;">
+          <span>XP</span><span id="hud-xp-text">0/150</span>
+        </div>
+        <div class="xp-bar"><div class="xp-bar-fill" id="hud-xp-fill" style="width:0%"></div></div>
+      </div>
+      <button class="civ-btn civ-btn-sm" onclick="openTechTree()">🧬 Research</button>
+      <button class="civ-btn civ-btn-sm" onclick="window.location.href='/select'">Modes</button>
+    </div>
+  </div>
+
+  <!-- ═══ Game Layout ═══ -->
+  <div class="game-layout">
+    <!-- LEFT SIDEBAR -->
+    <div class="sidebar" id="left-sidebar">
+      <!-- City Selector -->
+      <div class="sidebar-section">
+        <div class="sidebar-title">🏙️ City</div>
+        <select class="civ-input" id="city-selector" onchange="loadCity(this.value)" style="font-size:13px;padding:8px;">
+          <option value="">Select a city...</option>
+        </select>
+        <div id="city-info" class="mt-2" style="font-size:11px;color:var(--text-dim);"></div>
+      </div>
+
+      <!-- NLP Command Bar -->
+      <div class="sidebar-section">
+        <div class="sidebar-title">💬 Command</div>
+        <div class="nlp-bar">
+          <input type="text" id="nlp-input" placeholder='Try "build the power grid"...' onkeydown="if(event.key==='Enter')runNLP()">
+          <button onclick="runNLP()">GO</button>
+        </div>
+        <div id="nlp-result" style="font-size:11px;color:var(--text-dim);margin-top:4px;"></div>
+      </div>
+
+      <!-- Algorithm Palette -->
+      <div class="sidebar-section flex-1 overflow-y-auto">
+        <div class="sidebar-title">⚡ Algorithms</div>
+        <div class="tab-bar">
+          <button class="tab-btn active" onclick="showAlgoTab('all',this)">All</button>
+          <button class="tab-btn" onclick="showAlgoTab('mst',this)">MST</button>
+          <button class="tab-btn" onclick="showAlgoTab('pathfinding',this)">Path</button>
+          <button class="tab-btn" onclick="showAlgoTab('flow',this)">Flow</button>
+          <button class="tab-btn" onclick="showAlgoTab('optimization',this)">Opt</button>
+          <button class="tab-btn" onclick="showAlgoTab('scheduling',this)">Sched</button>
+        </div>
+        <div class="algo-palette" id="algo-palette"></div>
+      </div>
+
+      <!-- Missions -->
+      <div class="sidebar-section" style="max-height:160px;overflow-y:auto;">
+        <div class="sidebar-title">📜 Missions</div>
+        <div id="missions-list"></div>
+      </div>
+
+      <!-- Game Challenges -->
+      <div class="sidebar-section">
+        <div class="sidebar-title">⚔️ Game Challenges</div>
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <button class="civ-btn civ-btn-sm w-full" id="btn-congestion-game" onclick="startCongestionGame()">🚦 Congestion Toll Game</button>
+          <button class="civ-btn civ-btn-sm w-full" id="btn-security-game" onclick="startSecurityGame()">🛡️ Bottleneck Min-Cut Game</button>
+          <button class="civ-btn civ-btn-sm w-full text-red hidden" id="btn-stop-game" onclick="stopGameChallenge()">🛑 Exit Game Mode</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="resizer" id="left-resizer"></div>
+
+    <!-- CENTER: Map -->
+    <div class="game-center">
+      <div id="map" style="width:100%;height:100%;"></div>
+      <canvas id="weather-canvas" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:999;"></canvas>
+
+      <!-- Bottom Bar -->
+      <div class="bottom-bar">
+        <div class="flex items-center gap-3">
+          <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);" id="status-text">Ready</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button class="civ-btn civ-btn-sm" id="btn-pause" onclick="togglePause()" style="display:none;">⏸ Pause</button>
+          <button class="civ-btn civ-btn-sm" id="btn-step" onclick="stepForward()" style="display:none;">⏭ Step</button>
+          <button class="civ-btn civ-btn-sm" onclick="resetVisualization()">🔄 Reset</button>
+        </div>
+        <button class="end-turn-btn" onclick="endTurn()" id="btn-end-turn">End Turn</button>
+      </div>
+    </div>
+
+    <div class="resizer" id="right-resizer"></div>
+
+    <!-- RIGHT SIDEBAR -->
+    <div class="sidebar sidebar-right" id="right-sidebar">
+      <!-- Algorithm Stats -->
+      <div class="sidebar-section">
+        <div class="sidebar-title">📊 Algorithm Stats</div>
+        <div id="algo-stats" style="font-size:12px;color:var(--text-dim);">
+          <div>Select an algorithm and run it on a loaded city.</div>
+        </div>
+      </div>
+
+      <!-- Big-O Meter -->
+      <div class="sidebar-section">
+        <div class="sidebar-title">📈 Big-O Meter</div>
+        <div class="bigo-meter">
+          <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-muted);">
+            <span>Ops: <span id="bigo-ops" style="color:var(--text-primary);">0</span></span>
+            <span>Theoretical: <span id="bigo-theoretical" style="color:var(--gold);">-</span></span>
+          </div>
+          <div class="bigo-bar-track">
+            <div class="bigo-bar-fill" id="bigo-fill" style="width:0%;background:var(--teal);"></div>
+          </div>
+          <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted);text-align:center;" id="bigo-ratio">-</div>
+        </div>
+      </div>
+
+      <!-- XAI Panel -->
+      <div class="sidebar-section flex-1">
+        <div class="sidebar-title">🧠 Explainer</div>
+        <div class="xai-panel" id="xai-panel">
+          <p>Algorithm explanations will appear here as the visualization runs.</p>
+        </div>
+      </div>
+
+      <!-- Efficiency Report (shown after completion) -->
+      <div class="sidebar-section" id="report-section" style="display:none;">
+        <div class="sidebar-title">🏆 Efficiency Report</div>
+        <div id="report-card"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <script>
+    // ═══════════════════════════════════════════════════════════════════
+    // STATE
+    // ═══════════════════════════════════════════════════════════════════
+    const state = {
+      token: localStorage.getItem('sc_token'),
+      profile: {},
+      cityId: null,
+      cityName: null,
+      graphData: null,
+      map: null,
+      graphLayer: null,
+      overlayLayers: [],
+      ws: null,
+      stepLog: [],
+      stepIndex: 0,
+      paused: false,
+      running: false,
+      selectedAlgo: null,
+      selectedNodes: [],
+      algos: {},
+      quests: [],
+      activeQuestId: null,
+    };
+
+    // Initialize profile
+    const savedProfile = localStorage.getItem('sc_profile');
+    if (savedProfile) {
+      state.profile = JSON.parse(savedProfile);
+      if (!state.profile.level) state.profile.level = 1;
+      if (!state.profile.unlocked_algos || state.profile.unlocked_algos.length === 0) {
+        state.profile.unlocked_algos = ['prim', 'fcfs', 'graham_scan', 'first_fit'];
+      }
+    } else {
+      state.profile = { 
+        _id: 'guest', 
+        username: 'Guest', 
+        coins: 2000, 
+        research_points: 100, 
+        level: 1, 
+        xp: 0, 
+        xp_to_next: 100, 
+        unlocked_algos: ['prim', 'fcfs', 'graham_scan', 'first_fit'],
+        completed_quests: []
+      };
+      localStorage.setItem('sc_profile', JSON.stringify(state.profile));
+    }
+    if (!state.token) {
+      state.token = '';
+    }
+
+    function apiHeaders() {
+      return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.token}` };
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // INITIALIZATION
+    // ═══════════════════════════════════════════════════════════════════
+    async function init() {
+      initResizableSidebars();
+      updateHUD();
+      initWeatherCanvas();
+
+      // Init map
+      state.map = L.map('map', {
+        center: [20.5, 78.9],
+        zoom: 5,
+        zoomControl: true,
+        attributionControl: true,
+      });
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
+        subdomains: 'abcd',
+        maxZoom: 19,
+      }).addTo(state.map);
+
+      state.graphLayer = L.layerGroup().addTo(state.map);
+
+      // Load cities
+      try {
+        const res = await fetch('/api/cities');
+        const cityPayload = await res.json();
+        const cityEntries = Array.isArray(cityPayload.cities)
+          ? cityPayload.cities.map(c => [c.key, { ...c, icon: '' }])
+          : Object.entries(cityPayload);
+        const sel = document.getElementById('city-selector');
+        for (const [id, info] of cityEntries) {
+          const opt = document.createElement('option');
+          opt.value = id;
+          opt.textContent = `${info.icon} ${info.name}`;
+          sel.appendChild(opt);
+
+          // Add city marker on map
+          L.circleMarker([info.lat, info.lon], {
+            radius: 6, fillColor: '#c5a059', color: '#dfc38a',
+            weight: 1, fillOpacity: 0.8,
+          }).addTo(state.map)
+           .bindTooltip(info.name, { permanent: false, className: 'city-tooltip' })
+           .on('click', () => { sel.value = id; loadCity(id); });
+        }
+      } catch (e) { console.error('Failed to load cities', e); }
+
+      // Load algorithms
+      try {
+        const res = await fetch('/api/algorithms');
+        state.algos = await res.json();
+        renderAlgoPalette('all');
+      } catch (e) { console.error('Failed to load algorithms', e); }
+
+      // Load quests
+      try {
+        const res = await fetch('/api/quests');
+        state.quests = await res.json();
+        renderMissions();
+      } catch (e) { console.error('Failed to load quests', e); }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // HUD
+    // ═══════════════════════════════════════════════════════════════════
+    function updateHUD() {
+      const p = state.profile;
+      document.getElementById('hud-avatar').textContent = p.avatar || '🧙';
+      document.getElementById('hud-username').textContent = p.username || 'Player';
+      document.getElementById('hud-level').textContent = p.level || 1;
+      document.getElementById('hud-coins').textContent = p.coins || 500;
+      document.getElementById('hud-rp').textContent = p.research_points || 100;
+      document.getElementById('hud-happiness').textContent = Math.round(p.happiness || 75);
+      document.getElementById('hud-pop').textContent = p.population || 100;
+      document.getElementById('hud-turn').textContent = p.current_turn || 1;
+      const xp = p.xp || 0;
+      const xpNext = p.xp_to_next || 150;
+      document.getElementById('hud-xp-text').textContent = `${xp}/${xpNext}`;
+      document.getElementById('hud-xp-fill').style.width = `${Math.min(100, (xp / xpNext) * 100)}%`;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // CITY LOADING
+    // ═══════════════════════════════════════════════════════════════════
+    async function loadCity(cityId) {
+      if (!cityId) return;
+      setStatus(`Loading ${cityId}...`);
+
+      try {
+        const res = await fetch('/api/load-city', {
+          method: 'POST',
+          headers: apiHeaders(),
+          body: JSON.stringify({ city: cityId }),
+        });
+        if (!res.ok) throw new Error('Failed to load city');
+        const data = await res.json();
+
+        state.cityId = cityId;
+        state.cityName = data.city_name;
+        state.graphData = data.graph;
+        state.lat = data.lat;
+        state.lon = data.lon;
+
+        // Center map
+        state.map.setView([data.lat, data.lon], 13);
+
+        // Render graph
+        renderGraph(data.graph, data.lat, data.lon);
+
+        // Weather integration
+        if (data.graph && data.graph.weather) {
+          setWeatherEffect(data.graph.weather);
+        } else {
+          loadWeather(data.lat, data.lon);
+        }
+
+        document.getElementById('city-info').innerHTML =
+          `<strong>${data.city_name}</strong> — ${data.node_count} nodes, ${data.edge_count} edges (${data.source})`;
+
+        setStatus(`${data.city_name} loaded`);
+        showToast(`${data.city_name} loaded — ${data.node_count} intersections`, 'success');
+      } catch (e) {
+        setStatus('Failed to load city');
+        showToast('Failed to load city: ' + e.message, 'error');
+      }
+    }
+
+    function renderGraph(graph, centerLat, centerLon) {
+      state.graphLayer.clearLayers();
+      state.overlayLayers.forEach(l => state.map.removeLayer(l));
+      state.overlayLayers = [];
+
+      const nodes = graph.nodes || [];
+      const edges = graph.edges || [];
+
+      // Build node lookup
+      const nodeMap = {};
+      for (const n of nodes) {
+        nodeMap[n.id] = n;
+      }
+
+      // Draw edges first
+      for (const e of edges) {
+        const u = nodeMap[e.u], v = nodeMap[e.v];
+        if (!u || !v) continue;
+        const line = L.polyline(
+          [[u.lat, u.lon], [v.lat, v.lon]],
+          { color: 'rgba(197,160,89,0.25)', weight: 1.5, className: `edge-${e.u}-${e.v}` }
+        );
+        line.edgeU = e.u;
+        line.edgeV = e.v;
+        state.graphLayer.addLayer(line);
+      }
+
+      // Draw nodes (with real POI visibility support)
+      for (const n of nodes) {
+        let radius = 3;
+        let fillColor = '#5A6474';
+        let tooltipText = '';
+        let isPoi = false;
+        
+        if (n.amenities && n.amenities.length > 0) {
+          isPoi = true;
+          radius = 6.5;
+          const primaryType = n.amenities[0].type;
+          if (primaryType === 'hospital' || primaryType === 'pharmacy') {
+            fillColor = '#E24B4A';
+          } else if (primaryType === 'police') {
+            fillColor = '#378ADD';
+          } else if (primaryType === 'fire_station') {
+            fillColor = '#EF9F27';
+          } else if (primaryType === 'school' || primaryType === 'university') {
+            fillColor = '#8B5CF6';
+          } else if (primaryType === 'park') {
+            fillColor = '#1D9E75';
+          } else if (primaryType === 'bank') {
+            fillColor = '#FDD835';
+          } else {
+            fillColor = '#c5a059';
+          }
+          
+          tooltipText = n.amenities.map(a => {
+            const emoji = a.type === 'hospital' ? '🏥' :
+                          a.type === 'pharmacy' ? '💊' :
+                          a.type === 'police' ? '👮' :
+                          a.type === 'fire_station' ? '🚒' :
+                          a.type === 'school' ? '🏫' :
+                          a.type === 'university' ? '🎓' :
+                          a.type === 'park' ? '🌳' :
+                          a.type === 'bank' ? '🏦' : '📍';
+            return `${emoji} <strong>${a.name}</strong> <span style="font-size:9px;color:var(--text-muted);">(${a.type.replace('_', ' ')})</span>`;
+          }).join('<br>');
+        }
+
+        const marker = L.circleMarker([n.lat, n.lon], {
+          radius: radius,
+          fillColor: fillColor,
+          color: isPoi ? '#dfc38a' : fillColor,
+          weight: isPoi ? 1.5 : 0,
+          fillOpacity: isPoi ? 0.95 : 0.7,
+          className: `node-${n.id}`,
+        });
+        marker.nodeId = n.id;
+        marker.on('click', () => onNodeClick(n.id));
+        if (isPoi) {
+          marker.bindTooltip(tooltipText, { permanent: false, direction: 'top', className: 'poi-tooltip' });
+        }
+        state.graphLayer.addLayer(marker);
+      }
+    }
+
+    function onNodeClick(nodeId) {
+      state.selectedNodes.push(nodeId);
+      // Highlight
+      state.graphLayer.eachLayer(l => {
+        if (l.nodeId === nodeId) {
+          l.setStyle({ fillColor: '#EF9F27', fillOpacity: 1, radius: 6 });
+        }
+      });
+      if (state.selectedNodes.length === 1) {
+        setStatus(`Source: Node ${nodeId}. Click another node for target.`);
+      } else if (state.selectedNodes.length >= 2) {
+        setStatus(`Source: ${state.selectedNodes[0]}, Target: ${state.selectedNodes[1]}`);
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // ALGORITHM PALETTE
+    // ═══════════════════════════════════════════════════════════════════
+    function renderAlgoPalette(filter) {
+      const palette = document.getElementById('algo-palette');
+      const unlocked = new Set(state.profile.unlocked_algos && state.profile.unlocked_algos.length > 0 ? state.profile.unlocked_algos : ['prim', 'fcfs', 'graham_scan', 'first_fit']);
+      let html = '';
+
+      const categories = {};
+      for (const [id, info] of Object.entries(state.algos)) {
+        const cat = info.category || 'other';
+        if (filter !== 'all' && cat !== filter) continue;
+        if (!categories[cat]) categories[cat] = [];
+        categories[cat].push({ id, ...info });
+      }
+
+      for (const [cat, algos] of Object.entries(categories)) {
+        html += `<div class="algo-palette-category">${cat}</div>`;
+        for (const algo of algos) {
+          const locked = !unlocked.has(algo.id);
+          html += `<div class="algo-palette-item ${locked ? 'locked' : ''}" 
+                        onclick="${locked ? '' : `selectAlgo('${algo.id}')`}" 
+                        title="${algo.desc || ''}"
+                        id="algo-item-${algo.id}">
+            <span class="name">${locked ? '🔒 ' : ''}${algo.name}</span>
+            <span class="cost">${algo.cost}🪙</span>
+          </div>`;
+        }
+      }
+      palette.innerHTML = html;
+    }
+
+    function showAlgoTab(tab, btn) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderAlgoPalette(tab);
+    }
+
+    function selectAlgo(algoId) {
+      if (!state.graphData) {
+        showToast('Load a city first!', 'warning');
+        return;
+      }
+      state.selectedAlgo = algoId;
+      // Highlight
+      document.querySelectorAll('.algo-palette-item').forEach(el => el.style.background = '');
+      const el = document.getElementById(`algo-item-${algoId}`);
+      if (el) el.style.background = 'var(--bg-hover)';
+
+      const info = state.algos[algoId];
+      if (info.cost > (state.profile.coins || 0)) {
+        showToast(`Not enough coins! Need ${info.cost} 🪙`, 'warning');
+        return;
+      }
+
+      // Run immediately
+      runAlgorithm(algoId);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // ALGORITHM EXECUTION (WebSocket)
+    // ═══════════════════════════════════════════════════════════════════
+    function runAlgorithm(algoName) {
+      if (state.running) {
+        showToast('Algorithm already running!', 'warning');
+        return;
+      }
+      if (!state.graphData) {
+        showToast('Load a city first!', 'warning');
+        return;
+      }
+
+      state.running = true;
+      state.stepLog = [];
+      state.stepIndex = 0;
+      state.paused = false;
+      resetVisualization();
+
+      const info = state.algos[algoName] || {};
+      setStatus(`Running ${info.name || algoName}...`);
+      document.getElementById('btn-pause').style.display = '';
+      document.getElementById('btn-step').style.display = '';
+      document.getElementById('report-section').style.display = 'none';
+
+      // Deduct coins
+      if (state.profile._id !== 'guest') {
+        state.profile.coins = (state.profile.coins || 0) - (info.cost || 0);
+        updateHUD();
+      }
+
+      // Build params
+      const params = { speed_ms: 100 };
+      if (state.selectedNodes.length >= 1) params.start_node = state.selectedNodes[0];
+      if (state.selectedNodes.length >= 2) {
+        params.end_node = state.selectedNodes[1];
+        params.source_node = state.selectedNodes[0];
+        params.sink_node = state.selectedNodes[1];
+      }
+
+      // Connect WebSocket
+      const wsUrl = `ws://${window.location.host}/ws/algorithm`;
+      state.ws = new WebSocket(wsUrl);
+
+      state.ws.onopen = () => {
+        state.ws.send(JSON.stringify({
+          action: 'run',
+          algorithm: algoName,
+          city_id: state.cityId || 'bengaluru',
+          user_id: state.profile._id || '',
+          params,
+        }));
+      };
+
+      state.ws.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+
+          if (msg.type === 'step') {
+            state.stepLog.push(msg.delta);
+            state.stepIndex = state.stepLog.length;
+            if (!state.paused) {
+              animateDelta(msg.delta);
+              updateStats(msg.stats);
+              if (msg.delta.xai_text) {
+                document.getElementById('xai-panel').innerHTML = `<p>${msg.delta.xai_text}</p>`;
+              }
+            }
+          } else if (msg.type === 'complete') {
+            state.running = false;
+            document.getElementById('btn-pause').style.display = 'none';
+            document.getElementById('btn-step').style.display = 'none';
+            const summary = msg.summary;
+            setStatus(`${info.name || algoName} — Complete`);
+            if (summary.xai_text) {
+              document.getElementById('xai-panel').innerHTML = `<p class="highlight">${summary.xai_text}</p>`;
+            }
+            if (summary.grade) {
+              showReport(summary.grade, summary, algoName);
+            }
+            // Refresh profile
+            refreshProfile();
+            // Check quest completion
+            checkQuestCompletion(algoName);
+          } else if (msg.type === 'error') {
+            state.running = false;
+            showToast(msg.message || 'Algorithm error', 'error');
+            setStatus('Error');
+          }
+        } catch (e) { console.error('WS parse error', e); }
+      };
+
+      state.ws.onerror = () => {
+        state.running = false;
+        showToast('WebSocket error', 'error');
+      };
+      state.ws.onclose = () => { state.ws = null; };
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // VISUALIZATION
+    // ═══════════════════════════════════════════════════════════════════
+    const EDGE_COLORS = {
+      added: '#1D9E75', frontier: '#378ADD', relaxed: '#8B5CF6',
+      path: '#FFD700', flow: '#EF9F27', bottleneck: '#E24B4A',
+    };
+    const NODE_COLORS = {
+      visited: '#1D9E75', frontier: '#378ADD', hub: '#FFD700', path: '#FFD700',
+    };
+
+    function animateDelta(delta) {
+      const kind = delta.kind;
+      switch (kind) {
+        case 'edge_added':
+        case 'edge_relaxed':
+          setEdgeColor(delta.from_node, delta.to_node, EDGE_COLORS[kind === 'edge_added' ? 'added' : 'relaxed']);
+          break;
+        case 'edge_rejected':
+          setEdgeColor(delta.from_node, delta.to_node, EDGE_COLORS.bottleneck);
+          setTimeout(() => setEdgeColor(delta.from_node, delta.to_node, 'rgba(197,160,89,0.15)'), 400);
+          break;
+        case 'node_visited':
+          setNodeColor(delta.node, NODE_COLORS.visited, 5);
+          break;
+        case 'node_frontier':
+          setNodeColor(delta.node || delta.to_node, NODE_COLORS.frontier, 4);
+          if (delta.from_node !== undefined && delta.node !== undefined) {
+            setEdgeColor(delta.from_node, delta.node, EDGE_COLORS.frontier);
+          }
+          break;
+        case 'path_found':
+          if (delta.path) {
+            delta.path.forEach((n, i) => {
+              setTimeout(() => {
+                setNodeColor(n, NODE_COLORS.path, 6);
+                if (i < delta.path.length - 1) setEdgeColor(n, delta.path[i+1], EDGE_COLORS.path);
+              }, i * 60);
+            });
+          }
+          break;
+        case 'augmenting_path':
+          if (delta.path) {
+            for (let i = 0; i < delta.path.length - 1; i++) {
+              setEdgeColor(delta.path[i], delta.path[i+1], EDGE_COLORS.flow);
+            }
+          }
+          break;
+        case 'iteration_complete':
+          if (delta.top_nodes) {
+            for (const tn of delta.top_nodes) {
+              setNodeColor(tn.node, NODE_COLORS.hub, 7);
+            }
+          }
+          if (delta.alpha_pos) {
+            for (const fid of delta.alpha_pos) {
+              setNodeColor(fid, '#FFD700', 8);
+            }
+          }
+          break;
+        case 'facility_placed':
+          if (delta.facility_node !== undefined) {
+            setNodeColor(delta.facility_node, '#FFD700', 9);
+          }
+          break;
+        case 'community_refined':
+          // Handle at completion
+          break;
+      }
+    }
+
+    function setEdgeColor(u, v, color) {
+      state.graphLayer.eachLayer(l => {
+        if ((l.edgeU === u && l.edgeV === v) || (l.edgeU === v && l.edgeV === u)) {
+          l.setStyle({ color, weight: 2.5, opacity: 0.9 });
+        }
+      });
+    }
+
+    function setNodeColor(nodeId, color, radius = 4) {
+      state.graphLayer.eachLayer(l => {
+        if (l.nodeId === nodeId) {
+          l.setStyle({ fillColor: color, fillOpacity: 1, radius });
+        }
+      });
+    }
+
+    function resetVisualization() {
+      state.selectedNodes = [];
+      state.graphLayer.eachLayer(l => {
+        if (l.edgeU !== undefined) {
+          l.setStyle({ color: 'rgba(197,160,89,0.25)', weight: 1.5, opacity: 0.8 });
+        }
+        if (l.nodeId !== undefined) {
+          l.setStyle({ fillColor: '#5A6474', fillOpacity: 0.7, radius: 3 });
+        }
+      });
+      document.getElementById('report-section').style.display = 'none';
+      setStatus('Ready');
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // STATS & REPORT
+    // ═══════════════════════════════════════════════════════════════════
+    function updateStats(stats) {
+      const el = document.getElementById('algo-stats');
+      el.innerHTML = `
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+          <div><span class="text-muted text-xs">Algorithm</span><br><strong>${stats.algo_name || '-'}</strong></div>
+          <div><span class="text-muted text-xs">Wall Time</span><br><strong>${stats.wall_ms || 0}ms</strong></div>
+          <div><span class="text-muted text-xs">Operations</span><br><strong>${stats.ops_so_far || 0}</strong></div>
+          <div><span class="text-muted text-xs">Nodes</span><br><strong>${stats.theoretical_n || 0}</strong></div>
+        </div>`;
+
+      document.getElementById('bigo-ops').textContent = stats.ops_so_far || 0;
+      if (stats.theoretical_complexity) {
+        document.getElementById('bigo-theoretical').textContent = stats.theoretical_complexity;
+      }
+      // Simple fill
+      const ratio = Math.min(2, (stats.ops_so_far || 0) / Math.max(1, stats.theoretical_n * 10));
+      const pct = Math.min(100, ratio * 50);
+      const fill = document.getElementById('bigo-fill');
+      fill.style.width = pct + '%';
+      fill.style.background = pct > 80 ? 'var(--red)' : pct > 50 ? 'var(--amber)' : 'var(--teal)';
+      document.getElementById('bigo-ratio').textContent = `${ratio.toFixed(2)}x`;
+    }
+
+    function showReport(grade, summary, algoName) {
+      const info = state.algos[algoName] || {};
+      document.getElementById('report-section').style.display = '';
+
+      let algoSpecificHtml = '';
+      if (algoName === 'dijkstra' || algoName === 'contraction' || algoName === 'shortest_path') {
+        const distVal = summary.distance || summary.dist || 0;
+        const distStr = distVal >= 1000 ? `${(distVal / 1000).toFixed(2)} km` : `${distVal.toFixed(0)} m`;
+        const hops = summary.path ? summary.path.length - 1 : 0;
+        algoSpecificHtml = `
+          <div style="font-size:11px;color:var(--gold);margin-top:6px;padding:4px 0;border-top:1px solid rgba(255,255,255,0.08);display:flex;justify-content:space-between;">
+            <span>🗺️ Route Distance:</span>
+            <strong>${distStr}</strong>
+          </div>
+          <div style="font-size:11px;color:var(--text-dim);padding:4px 0;display:flex;justify-content:space-between;">
+            <span>🛡️ Route Segments (Hops):</span>
+            <strong>${hops} segments</strong>
+          </div>
+        `;
+      } else if (algoName === 'prim' || algoName === 'kruskal') {
+        let totalWeight = summary.total_weight || 0;
+        if (!totalWeight && summary.mst_edges) {
+          totalWeight = summary.mst_edges.reduce((sum, e) => sum + (e.weight || 0), 0);
+        }
+        const distStr = totalWeight >= 1000 ? `${(totalWeight / 1000).toFixed(2)} km` : `${totalWeight.toFixed(0)} m`;
+        algoSpecificHtml = `
+          <div style="font-size:11px;color:var(--teal);margin-top:6px;padding:4px 0;border-top:1px solid rgba(255,255,255,0.08);display:flex;justify-content:space-between;">
+            <span>🔌 Total Spanning Grid Length:</span>
+            <strong>${distStr}</strong>
+          </div>
+          <div style="font-size:11px;color:var(--text-dim);padding:4px 0;display:flex;justify-content:space-between;">
+            <span>🌲 Spanned Intersections:</span>
+            <strong>${summary.nodes_visited || (summary.mst_edges ? summary.mst_edges.length + 1 : 0)} nodes</strong>
+          </div>
+        `;
+      } else if (algoName === 'edmonds_karp' || algoName === 'flow') {
+        algoSpecificHtml = `
+          <div style="font-size:11px;color:var(--blue);margin-top:6px;padding:4px 0;border-top:1px solid rgba(255,255,255,0.08);display:flex;justify-content:space-between;">
+            <span>🌊 Maximum Flow Capacity:</span>
+            <strong>${summary.max_flow || 0} vehicles/hr</strong>
+          </div>
+        `;
+      } else if (algoName === 'leiden' || algoName === 'louvain') {
+        const count = summary.n_communities || summary.num_communities || (summary.communities ? new Set(Object.values(summary.communities)).size : 0);
+        algoSpecificHtml = `
+          <div style="font-size:11px;color:var(--purple);margin-top:6px;padding:4px 0;border-top:1px solid rgba(255,255,255,0.08);display:flex;justify-content:space-between;">
+            <span>🏘️ Administrative Districts:</span>
+            <strong>${count} zones</strong>
+          </div>
+        `;
+      } else if (algoName === 'pagerank') {
+        algoSpecificHtml = `
+          <div style="font-size:11px;color:var(--gold);margin-top:6px;padding:4px 0;border-top:1px solid rgba(255,255,255,0.08);display:flex;justify-content:space-between;">
+            <span>🚦 Core Intersections:</span>
+            <strong>${summary.top_nodes ? summary.top_nodes.slice(0, 3).map(n => `Node ${n}`).join(', ') : 'None'}</strong>
+          </div>
+        `;
+      } else if (algoName === 'k_median' || algoName === 'gwo') {
+        const count = summary.facilities ? summary.facilities.length : (summary.positions ? summary.positions.length : 0);
+        algoSpecificHtml = `
+          <div style="font-size:11px;color:var(--gold);margin-top:6px;padding:4px 0;border-top:1px solid rgba(255,255,255,0.08);display:flex;justify-content:space-between;">
+            <span>🏥 Optimal Facility Placements:</span>
+            <strong>${count} centers</strong>
+          </div>
+        `;
+      }
+
+      document.getElementById('report-card').innerHTML = `
+        <div class="report-card animate-slide-up">
+          <div class="report-card-header">
+            <div class="grade-badge grade-${grade.grade}">${grade.grade}</div>
+            <div>
+              <div class="algo-name">${info.name || algoName}</div>
+              <div class="algo-sub">${grade.comparison_text || ''}</div>
+            </div>
+          </div>
+          <div class="report-stats">
+            <div class="report-stat"><div class="label">Score</div><div class="value">${grade.efficiency_score}%</div></div>
+            <div class="report-stat"><div class="label">Operations</div><div class="value">${grade.actual_ops}</div></div>
+            <div class="report-stat"><div class="label">Theoretical</div><div class="value">${grade.theoretical_ops}</div></div>
+            <div class="report-stat"><div class="label">Ratio</div><div class="value">${grade.efficiency_ratio}x</div></div>
+          </div>
+          ${algoSpecificHtml}
+          <div style="display:flex;gap:16px;margin-bottom:12px;margin-top:12px;font-size:12px;font-weight:bold;">
+            <span style="color:var(--teal);">+${grade.xp_earned} XP</span>
+            <span style="color:var(--gold);">+${grade.coins_earned} 🪙</span>
+            <span style="color:var(--purple);">+${grade.rp_earned} 🧪</span>
+          </div>
+          ${grade.tips ? `<div class="report-tips">${grade.tips.map(t => `<div><span class="tip-icon">💡</span>${t}</div>`).join('')}</div>` : ''}
+          ${grade.new_achievements ? grade.new_achievements.map(a => `<div class="toast achievement" style="margin-top:8px;">${a.icon} ${a.title} — ${a.description}</div>`).join('') : ''}
+        </div>`;
+
+      if (grade.grade === 'S') showToast('🌟 Perfect S-Grade! Outstanding!', 'achievement');
+      else if (grade.grade === 'A') showToast('Excellent A-Grade!', 'success');
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // NLP
+    // ═══════════════════════════════════════════════════════════════════
+    async function runNLP() {
+      const input = document.getElementById('nlp-input');
+      const text = input.value.trim();
+      if (!text) return;
+
+      document.getElementById('nlp-result').textContent = 'Parsing...';
+      try {
+        const res = await fetch('/api/nlp/parse', {
+          method: 'POST', headers: apiHeaders(),
+          body: JSON.stringify({ text }),
+        });
+        const data = await res.json();
+        document.getElementById('nlp-result').innerHTML =
+          `<span style="color:var(--gold);">${data.explanation || ''}</span> (${Math.round((data.confidence || 0) * 100)}%)`;
+
+        if (data.intent === 'run_algorithm' && data.algorithm) {
+          input.value = '';
+          selectAlgo(data.algorithm);
+        }
+      } catch (e) {
+        document.getElementById('nlp-result').textContent = 'Parse failed';
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // ═══════════════════════════════════════════════════════════════════
+    // MISSIONS
+    // ═══════════════════════════════════════════════════════════════════
+    function renderMissions() {
+      const el = document.getElementById('missions-list');
+      const completed = new Set(state.profile.completed_quests || []);
+      el.innerHTML = state.quests.map((q, idx) => {
+        const isCompleted = completed.has(q.id);
+        const isActive = state.activeQuestId === q.id;
+        const isLocked = idx > 0 && !completed.has(state.quests[idx - 1].id);
+        
+        let lockIndicator = '';
+        if (isLocked) {
+          lockIndicator = '🔒 ';
+        } else if (isCompleted) {
+          lockIndicator = '✅ ';
+        } else if (isActive) {
+          lockIndicator = '🎯 ';
+        }
+        
+        return `
+        <div class="mission-card ${isCompleted ? 'completed' : ''} ${isActive ? 'active' : ''} ${isLocked ? 'locked' : ''}" 
+             style="margin-bottom:6px; cursor: pointer; border: 1.5px dashed ${isActive ? 'var(--gold)' : isCompleted ? '#3b434f' : 'rgba(255,255,255,0.06)'}; padding: 8px; border-radius: 4px; background: ${isActive ? 'rgba(197,160,89,0.04)' : 'transparent'}; opacity: ${isLocked ? 0.5 : 1.0};"
+             onclick="selectMission('${q.id}')">
+          <div class="title" style="display:flex; justify-content:space-between; font-weight:bold; font-size:11px;">
+            <span style="color: ${isActive ? 'var(--gold-light)' : 'inherit'}">${lockIndicator}${q.title}</span>
+            ${isActive ? '<span class="active-badge" style="color:var(--gold);font-size:8px;border:1px solid var(--gold);padding:0 4px;border-radius:2px;font-family:var(--font-mono);">ACTIVE</span>' : ''}
+          </div>
+          <div class="desc" style="font-size:10px; color:var(--text-dim); margin-top:3px; line-height:1.2;">${isLocked ? 'Complete the previous mission to unlock.' : q.description}</div>
+          <div class="rewards" style="margin-top:5px; font-size:9px; display:flex; gap:12px; font-family:var(--font-mono);">
+            <span style="color:var(--teal);">+${q.reward_xp}⭐</span>
+            <span style="color:var(--gold);">+${q.reward_coins}🪙</span>
+            <span style="color:var(--purple);">+${q.reward_rp}🧪</span>
+          </div>
+        </div>
+      `;
+      }).join('');
+    }
+
+    function selectMission(questId) {
+      const idx = state.quests.findIndex(q => q.id === questId);
+      if (idx === -1) return;
+      const quest = state.quests[idx];
+      const completed = new Set(state.profile.completed_quests || []);
+      if (completed.has(questId)) {
+        showToast('Mission already completed!', 'info');
+        return;
+      }
+      
+      const isLocked = idx > 0 && !completed.has(state.quests[idx - 1].id);
+      if (isLocked) {
+        showToast(`🔒 Locked! Complete "${state.quests[idx - 1].title}" first!`, 'warning');
+        return;
+      }
+      
+      const reqAlgo = quest.requirements?.algorithm || quest.algorithm;
+      const unlocked = new Set(state.profile.unlocked_algos && state.profile.unlocked_algos.length > 0 ? state.profile.unlocked_algos : ['prim', 'fcfs', 'graham_scan', 'first_fit']);
+      
+      if (reqAlgo && !unlocked.has(reqAlgo)) {
+        let reqLevel = 1;
+        const tierUnlocks = {
+          2: ['kruskal', 'dijkstra', 'sjf', 'rr'],
+          3: ['edmonds_karp', 'gwo', 'woa', 'raft_consensus', 'count_sketch', 'transformer'],
+          4: ['leiden', 'louvain', 'pagerank', 'hho', 'vit', 'learned_index', 'xgboost', 'edf'],
+          5: ['contraction', 'k_median', 'coa', 'kan', 'diffusion']
+        };
+        for (const [lvl, algos] of Object.entries(tierUnlocks)) {
+          if (algos.includes(reqAlgo)) reqLevel = lvl;
+        }
+        showToast(`🔒 Locked! This mission requires ${state.algos[reqAlgo]?.name || reqAlgo}. Reach Level ${reqLevel} to unlock!`, 'warning');
+        return;
+      }
+      
+      state.activeQuestId = questId;
+      showToast(`🎯 Active Mission Set: ${quest.title}! Run ${state.algos[reqAlgo]?.name || reqAlgo} to complete!`, 'success');
+      renderMissions();
+    }
+
+    function unlockAlgosForLevel(level) {
+      const tierUnlocks = {
+        2: ['kruskal', 'dijkstra', 'sjf', 'rr'],
+        3: ['edmonds_karp', 'gwo', 'woa', 'raft_consensus', 'count_sketch', 'transformer'],
+        4: ['leiden', 'louvain', 'pagerank', 'hho', 'vit', 'learned_index', 'xgboost', 'edf'],
+        5: ['contraction', 'k_median', 'coa', 'kan', 'diffusion']
+      };
+      
+      const unlocked = new Set(state.profile.unlocked_algos && state.profile.unlocked_algos.length > 0 ? state.profile.unlocked_algos : ['prim', 'fcfs', 'graham_scan', 'first_fit']);
+      let newUnlocks = [];
+      for (const [lvl, algos] of Object.entries(tierUnlocks)) {
+        if (level >= parseInt(lvl)) {
+          for (const algo of algos) {
+            if (!unlocked.has(algo)) {
+              unlocked.add(algo);
+              newUnlocks.push(state.algos[algo]?.name || algo);
+            }
+          }
+        }
+      }
+      state.profile.unlocked_algos = Array.from(unlocked);
+      if (newUnlocks.length > 0) {
+        showToast(`🔓 Unlocked: ${newUnlocks.join(', ')}!`, 'achievement');
+      }
+    }
+
+    async function checkQuestCompletion(algoName) {
+      // Award basic run rewards first
+      let earned_xp = 35;
+      let earned_coins = 20;
+      let earned_rp = 5;
+      
+      // Complete active quest if the run matches requirements
+      let questCompleted = false;
+      let q = null;
+      if (state.activeQuestId) {
+        q = state.quests.find(quest => quest.id === state.activeQuestId);
+        if (q) {
+          const reqAlgo = q.requirements?.algorithm || q.algorithm;
+          if (reqAlgo === algoName) {
+            questCompleted = true;
+            earned_xp += (q.reward_xp || 100);
+            earned_coins += (q.reward_coins || 50);
+            earned_rp += (q.reward_rp || 15);
+          }
+        }
+      }
+
+      try {
+        if (state.profile._id !== 'guest') {
+          // Sync with server if logged in
+          const body = { xp: earned_xp, coins: earned_coins, research_points: earned_rp };
+          if (questCompleted && q) body.complete_quest = q.id;
+          
+          const res = await fetch(`/api/profile/${state.profile._id}/update`, {
+            method: 'POST', headers: apiHeaders(),
+            body: JSON.stringify(body),
+          });
+          if (res.ok) {
+            state.profile = await res.json();
+          }
+        } else {
+          // Update Guest profile locally
+          state.profile.xp = (state.profile.xp || 0) + earned_xp;
+          state.profile.coins = (state.profile.coins || 0) + earned_coins;
+          state.profile.research_points = (state.profile.research_points || 0) + earned_rp;
+          
+          if (questCompleted && q) {
+            state.profile.completed_quests = [...(state.profile.completed_quests || []), q.id];
+          }
+
+          // Handle level up
+          let lvl = state.profile.level || 1;
+          let xp = state.profile.xp;
+          let xpNext = state.profile.xp_to_next || Math.round(100 * Math.pow(lvl, 1.5));
+          let leveledUp = false;
+          while (xp >= xpNext) {
+            xp -= xpNext;
+            lvl++;
+            xpNext = Math.round(100 * Math.pow(lvl, 1.5));
+            leveledUp = true;
+          }
+          if (leveledUp) {
+            state.profile.level = lvl;
+            state.profile.xp = xp;
+            state.profile.xp_to_next = xpNext;
+            showToast(`🎉 LEVEL UP! You are now Level ${lvl}!`, 'achievement');
+            unlockAlgosForLevel(lvl);
+          } else {
+            state.profile.xp_to_next = xpNext;
+          }
+        }
+
+        if (questCompleted && q) {
+          showToast(`📜 Mission Complete: ${q.title}!`, 'achievement');
+          state.activeQuestId = null;
+        }
+
+        localStorage.setItem('sc_profile', JSON.stringify(state.profile));
+        updateHUD();
+        renderMissions();
+        renderAlgoPalette(document.querySelector('.tab-btn.active')?.textContent.toLowerCase() || 'all');
+      } catch (e) {
+        console.error('Quest completion failed', e);
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // TURN SYSTEM
+    // ═══════════════════════════════════════════════════════════════════
+    async function endTurn() {
+      if (state.profile._id === 'guest') {
+        state.profile.current_turn = (state.profile.current_turn || 1) + 1;
+        state.profile.coins = (state.profile.coins || 0) + 50;
+        state.profile.research_points = (state.profile.research_points || 0) + 10;
+        state.profile.population = (state.profile.population || 100) + 5;
+        state.profile.xp = (state.profile.xp || 0) + 25;
+        localStorage.setItem('sc_profile', JSON.stringify(state.profile));
+        updateHUD();
+        showToast(`Turn ${state.profile.current_turn} — +50🪙 +10🧪`, 'info');
+        if (state.lat && state.lon) {
+          loadWeather(state.lat, state.lon);
+        }
+        return;
+      }
+      try {
+        const res = await fetch(`/api/profile/${state.profile._id}/end-turn`, {
+          method: 'POST', headers: apiHeaders(),
+        });
+        const data = await res.json();
+        if (data.profile) {
+          state.profile = data.profile;
+          localStorage.setItem('sc_profile', JSON.stringify(data.profile));
+          updateHUD();
+        }
+        let msg = `Turn ${data.turn} — +50🪙 +10🧪`;
+        if (data.leveled_up) msg += ` ⭐ LEVEL UP to ${data.level}!`;
+        if (data.new_unlocks?.length) msg += ` 🔓 Unlocked: ${data.new_unlocks.join(', ')}`;
+        showToast(msg, data.leveled_up ? 'achievement' : 'info');
+        if (data.leveled_up) renderAlgoPalette('all');
+        if (state.lat && state.lon) {
+          loadWeather(state.lat, state.lon);
+        }
+      } catch (e) {
+        showToast('End Turn failed', 'error');
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // PROFILE REFRESH
+    // ═══════════════════════════════════════════════════════════════════
+    async function refreshProfile() {
+      if (state.profile._id === 'guest') return;
+      try {
+        const res = await fetch('/api/auth/me', { headers: apiHeaders() });
+        if (res.ok) {
+          state.profile = await res.json();
+          localStorage.setItem('sc_profile', JSON.stringify(state.profile));
+          updateHUD();
+        }
+      } catch (e) {}
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // CONTROLS
+    // ═══════════════════════════════════════════════════════════════════
+    function togglePause() {
+      state.paused = !state.paused;
+      document.getElementById('btn-pause').textContent = state.paused ? '▶ Resume' : '⏸ Pause';
+    }
+
+    function stepForward() {
+      if (state.stepIndex < state.stepLog.length) {
+        animateDelta(state.stepLog[state.stepIndex++]);
+      }
+    }
+
+    function setStatus(text) { document.getElementById('status-text').textContent = text; }
+
+    function showToast(msg, type = 'info') {
+      const c = document.getElementById('toast-container');
+      const t = document.createElement('div');
+      t.className = `toast ${type}`;
+      t.textContent = msg;
+      c.appendChild(t);
+      setTimeout(() => t.remove(), 5000);
+    }
+
+    // RESIZABLE SIDEBARS
+    function initResizableSidebars() {
+      const leftSidebar = document.getElementById('left-sidebar');
+      const rightSidebar = document.getElementById('right-sidebar');
+      const leftResizer = document.getElementById('left-resizer');
+      const rightResizer = document.getElementById('right-resizer');
+
+      if (leftResizer && leftSidebar) {
+        leftResizer.addEventListener('mousedown', function(e) {
+          e.preventDefault();
+          document.addEventListener('mousemove', resizeLeft);
+          document.addEventListener('mouseup', stopResizeLeft);
+        });
+        function resizeLeft(e) {
+          let newWidth = e.clientX;
+          if (newWidth > 220 && newWidth < 600) {
+            leftSidebar.style.width = newWidth + 'px';
+            if (state.map) state.map.invalidateSize();
+          }
+        }
+        function stopResizeLeft() {
+          document.removeEventListener('mousemove', resizeLeft);
+          document.removeEventListener('mouseup', stopResizeLeft);
+        }
+      }
+
+      if (rightResizer && rightSidebar) {
+        rightResizer.addEventListener('mousedown', function(e) {
+          e.preventDefault();
+          document.addEventListener('mousemove', resizeRight);
+          document.addEventListener('mouseup', stopResizeRight);
+        });
+        function resizeRight(e) {
+          let newWidth = window.innerWidth - e.clientX;
+          if (newWidth > 220 && newWidth < 600) {
+            rightSidebar.style.width = newWidth + 'px';
+            if (state.map) state.map.invalidateSize();
+          }
+        }
+        function stopResizeRight() {
+          document.removeEventListener('mousemove', resizeRight);
+          document.removeEventListener('mouseup', stopResizeRight);
+        }
+      }
+    }
+
+    // TECH TREE MODAL LOGIC
+    function openTechTree() {
+      const modal = document.getElementById('tech-tree-modal');
+      modal.style.display = 'flex';
+      renderTechTree();
+    }
+
+    function closeTechTree() {
+      document.getElementById('tech-tree-modal').style.display = 'none';
+    }
+
+    function renderTechTree() {
+      const container = document.getElementById('tech-tree-nodes');
+      const unlocked = new Set(state.profile.unlocked_algos || []);
+      const userLevel = state.profile.level || 1;
+      const userRp = state.profile.research_points || 0;
+      
+      let html = '';
+      
+      const sortedAlgos = Object.entries(state.algos).sort((a, b) => {
+        return (a[1].tier || 1) - (b[1].tier || 1);
+      });
+      
+      for (const [key, meta] of sortedAlgos) {
+        const isUnlocked = unlocked.has(key);
+        const reqLvl = meta.tier || 1;
+        const rpCost = reqLvl * 40;
+        const meetsLevel = userLevel >= reqLvl;
+        
+        let statusHtml = '';
+        if (isUnlocked) {
+          statusHtml = `<span style="color:var(--teal); font-weight:bold;">🔓 Unlocked</span>`;
+        } else if (!meetsLevel) {
+          statusHtml = `<span style="color:var(--text-muted);">🔒 Requires Level ${reqLvl}</span>`;
+        } else {
+          const disabled = userRp < rpCost ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : '';
+          statusHtml = `<button class="civ-btn civ-btn-sm" ${disabled} onclick="researchAlgo('${key}', ${rpCost})">🧪 Unlock (${rpCost} RP)</button>`;
+        }
+        
+        html += `
+          <div class="tech-node ${isUnlocked ? 'unlocked' : 'locked'}">
+            <div>
+              <strong style="color:var(--gold-light); font-size:13px;">${meta.name}</strong>
+              <div style="font-size:11px; color:var(--text-dim); margin-top:2px;">${meta.desc}</div>
+              <div style="font-size:10px; color:var(--text-muted); margin-top:4px;">Category: ${meta.category.toUpperCase()} | Tier ${meta.tier}</div>
+            </div>
+            <div>${statusHtml}</div>
+          </div>
+        `;
+      }
+      container.innerHTML = html;
+    }
+
+    async function researchAlgo(algoKey, rpCost) {
+      if (state.profile._id === 'guest') {
+        if (state.profile.research_points < rpCost) {
+          showToast('Insufficient RP', 'error');
+          return;
+        }
+        state.profile.research_points -= rpCost;
+        if (!state.profile.unlocked_algos) state.profile.unlocked_algos = [];
+        state.profile.unlocked_algos.push(algoKey);
+        localStorage.setItem('sc_profile', JSON.stringify(state.profile));
+        updateHUD();
+        renderTechTree();
+        renderAlgoPalette('all');
+        showToast(`Unlocked ${algoKey.toUpperCase()} successfully!`, 'success');
+        return;
+      }
+      
+      try {
+        const res = await fetch(`/api/profile/${state.profile._id}/research`, {
+          method: 'POST',
+          headers: apiHeaders(),
+          body: JSON.stringify({ algorithm: algoKey })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          state.profile = data.profile;
+          localStorage.setItem('sc_profile', JSON.stringify(data.profile));
+          updateHUD();
+          renderTechTree();
+          renderAlgoPalette('all');
+          showToast(data.message || `Unlocked ${algoKey.toUpperCase()}!`, 'success');
+        } else {
+          showToast(data.detail || 'Research failed', 'error');
+        }
+      } catch (e) {
+        showToast('Research request failed', 'error');
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // GAME THEORY CHALLENGES
+    // ═══════════════════════════════════════════════════════════════════
+    let activeGameMode = null;
+    let gameTolls = {};
+    let gameCapacities = {};
+
+    function startCongestionGame() {
+      if (!state.graphData) {
+        showToast('Please load a city map first!', 'warning');
+        return;
+      }
+      activeGameMode = 'congestion';
+      gameTolls = {};
+      document.getElementById('btn-stop-game').classList.remove('hidden');
+      document.getElementById('btn-congestion-game').classList.add('active');
+      document.getElementById('btn-security-game').classList.remove('active');
+      
+      if (state.selectedNodes.length < 2) {
+        const nodes = state.graphData.nodes;
+        state.selectedNodes = [nodes[0].id, nodes[nodes.length - 1].id];
+        state.graphLayer.eachLayer(l => {
+          if (l.nodeId === state.selectedNodes[0] || l.nodeId === state.selectedNodes[1]) {
+            l.setStyle({ fillColor: '#EF9F27', fillOpacity: 1, radius: 7 });
+          }
+        });
+      }
+      
+      showToast('🚦 Congestion Toll Game started! Click on roads to add toll fees and optimize city travel times.', 'info');
+      runCongestionSimulation();
+    }
+
+    async function runCongestionSimulation() {
+      if (!state.graphData) return;
+      setStatus('Simulating traffic flows...');
+      
+      try {
+        const payload = {
+          nodes: state.graphData.nodes,
+          edges: state.graphData.edges,
+          demands: [{
+            source: state.selectedNodes[0],
+            target: state.selectedNodes[1],
+            count: 300
+          }],
+          tolls: gameTolls
+        };
+        
+        const res = await fetch('/api/game/congestion', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        
+        if (data.status === 'ok') {
+          const maxFlow = Math.max(...Object.values(data.flows), 1);
+          
+          state.graphLayer.eachLayer(l => {
+            if (l.edgeU !== undefined && l.edgeV !== undefined) {
+              const key1 = `${l.edgeU}-${l.edgeV}`;
+              const key2 = `${l.edgeV}-${l.edgeU}`;
+              const flow = data.flows[key1] || data.flows[key2] || 0;
+              
+              if (flow > 0) {
+                const ratio = flow / maxFlow;
+                const color = ratio > 0.7 ? '#E24B4A' : ratio > 0.4 ? '#EF9F27' : '#1D9E75';
+                const weight = 2 + ratio * 5;
+                l.setStyle({ color: color, weight: weight, opacity: 0.9 });
+                
+                const toll = gameTolls[key1] || gameTolls[key2] || 0;
+                l.bindPopup(`<strong>Road link</strong><br>Flow: ${flow} cars/hr<br>Toll: ${toll}🪙<br><button class="civ-btn civ-btn-sm mt-2" onclick="setRoadToll('${l.edgeU}', '${l.edgeV}')">Set Toll</button>`);
+              } else {
+                l.setStyle({ color: 'rgba(197,160,89,0.15)', weight: 1.5, opacity: 0.5 });
+                l.unbindPopup();
+              }
+            }
+          });
+          
+          document.getElementById('xai-panel').innerHTML = `
+            <h4 style="color:var(--gold); margin-bottom:6px;">🚦 Commuter Routing Game</h4>
+            <p>${data.explanation}</p>
+            <div style="margin-top:12px; font-family:var(--font-mono); font-size:11px;">
+              Total City Commute Time: <strong style="color:var(--gold); font-size:13px;">${data.total_time} mins</strong>
+            </div>
+            <button class="civ-btn civ-btn-sm w-full mt-3" onclick="runCongestionSimulation()">🔄 Recalculate Flows</button>
+          `;
+          setStatus(`Simulation complete. Travel time: ${data.total_time}`);
+        }
+      } catch (e) {
+        console.error(e);
+        showToast('Traffic simulation failed', 'error');
+      }
+    }
+
+    window.setRoadToll = function(u, v) {
+      const currentToll = gameTolls[`${u}-${v}`] || gameTolls[`${v}-${u}`] || 0;
+      const tollStr = prompt(`Set Toll fee (coins) for link ${u}-${v}:`, currentToll);
+      if (tollStr === null) return;
+      const toll = parseInt(tollStr) || 0;
+      gameTolls[`${u}-${v}`] = toll;
+      gameTolls[`${v}-${u}`] = toll;
+      showToast(`Toll set to ${toll}🪙 on link.`, 'success');
+      runCongestionSimulation();
+    }
+
+    function startSecurityGame() {
+      if (!state.graphData) {
+        showToast('Please load a city map first!', 'warning');
+        return;
+      }
+      activeGameMode = 'security';
+      gameCapacities = {};
+      document.getElementById('btn-stop-game').classList.remove('hidden');
+      document.getElementById('btn-security-game').classList.add('active');
+      document.getElementById('btn-congestion-game').classList.remove('active');
+      
+      if (state.selectedNodes.length < 2) {
+        const nodes = state.graphData.nodes;
+        state.selectedNodes = [nodes[0].id, nodes[nodes.length - 1].id];
+        state.graphLayer.eachLayer(l => {
+          if (l.nodeId === state.selectedNodes[0] || l.nodeId === state.selectedNodes[1]) {
+            l.setStyle({ fillColor: '#EF9F27', fillOpacity: 1, radius: 7 });
+          }
+        });
+      }
+      
+      showToast('🛡️ Bottleneck Min-Cut Game started! Reinforce critical links to increase total capacity.', 'info');
+      runSecuritySimulation();
+    }
+
+    async function runSecuritySimulation() {
+      if (!state.graphData) return;
+      setStatus('Calculating min cut bottlenecks...');
+      
+      try {
+        const payload = {
+          nodes: state.graphData.nodes,
+          edges: state.graphData.edges.map(e => {
+            const key1 = `${e.u}-${e.v}`;
+            const key2 = `${e.v}-${e.u}`;
+            const extra = gameCapacities[key1] || gameCapacities[key2] || 0;
+            return {
+              ...e,
+              capacity: (e.capacity || 800) + extra
+            };
+          }),
+          source: state.selectedNodes[0],
+          target: state.selectedNodes[1]
+        };
+        
+        const res = await fetch('/api/game/security', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        
+        if (data.status === 'ok') {
+          const cutEdges = new Set(data.cut_edges);
+          
+          state.graphLayer.eachLayer(l => {
+            if (l.edgeU !== undefined && l.edgeV !== undefined) {
+              const key1 = `${l.edgeU}-${l.edgeV}`;
+              const key2 = `${l.edgeV}-${l.edgeU}`;
+              const isCut = cutEdges.has(key1) || cutEdges.has(key2);
+              
+              if (isCut) {
+                l.setStyle({ color: '#E24B4A', weight: 4.5, opacity: 0.95, dashArray: '5, 5' });
+                l.bindPopup(`<strong>⚠️ Critical Cut Bottleneck</strong><br>Link: ${key1}<br>Cost to Reinforce: 100🪙<br><button class="civ-btn civ-btn-sm mt-2" onclick="reinforceLink('${l.edgeU}', '${l.edgeV}')">🛡️ Reinforce Link</button>`);
+              } else {
+                l.setStyle({ color: 'rgba(197,160,89,0.25)', weight: 1.5, opacity: 0.6, dashArray: null });
+                l.unbindPopup();
+              }
+            }
+          });
+          
+          document.getElementById('xai-panel').innerHTML = `
+            <h4 style="color:var(--gold); margin-bottom:6px;">🛡️ Network Security Game</h4>
+            <p>${data.explanation}</p>
+            <div style="margin-top:12px; font-family:var(--font-mono); font-size:11px;">
+              Total Bottleneck Capacity: <strong style="color:var(--teal); font-size:13px;">${data.min_cut_value}</strong>
+            </div>
+            <p style="font-size:10px; color:var(--text-muted); margin-top:8px;">Goal: Reinforce bottleneck edges to raise minimum cut capacity.</p>
+          `;
+          setStatus(`Security min cut: ${data.min_cut_value}`);
+        }
+      } catch (e) {
+        console.error(e);
+        showToast('Min cut computation failed', 'error');
+      }
+    }
+
+    window.reinforceLink = function(u, v) {
+      if (state.profile.coins < 100) {
+        showToast('Insufficient coins!', 'error');
+        return;
+      }
+      
+      const key1 = `${u}-${v}`;
+      const key2 = `${v}-${u}`;
+      gameCapacities[key1] = (gameCapacities[key1] || 0) + 400;
+      gameCapacities[key2] = (gameCapacities[key2] || 0) + 400;
+      
+      state.profile.coins -= 100;
+      localStorage.setItem('sc_profile', JSON.stringify(state.profile));
+      updateHUD();
+      
+      showToast(`Reinforced link ${key1} (+400 capacity) for 100🪙!`, 'success');
+      runSecuritySimulation();
+    }
+
+    function stopGameChallenge() {
+      activeGameMode = null;
+      gameTolls = {};
+      gameCapacities = {};
+      document.getElementById('btn-stop-game').classList.add('hidden');
+      document.getElementById('btn-congestion-game').classList.remove('active');
+      document.getElementById('btn-security-game').classList.remove('active');
+      
+      if (state.graphData) {
+        renderGraph(state.graphData, state.graphData.lat, state.graphData.lon);
+      }
+      document.getElementById('xai-panel').innerHTML = `<p>Exited Challenge Mode.</p>`;
+      showToast('Exited Challenge Mode.', 'info');
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // WEATHER INTEGRATION
+    // ═══════════════════════════════════════════════════════════════════
+    let weatherCanvas, weatherCtx;
+    let weatherAnimationId = null;
+    let weatherParticles = [];
+    let activeWeatherType = 'CLEAR';
+    let lightningFlash = 0;
+
+    async function loadWeather(lat, lon) {
+      try {
+        const wRes = await fetch(`/api/weather/${lat}/${lon}`);
+        const weather = await wRes.json();
+        setWeatherEffect(weather);
+      } catch (err) {
+        console.error("Failed to load weather", err);
+      }
+    }
+
+    function initWeatherCanvas() {
+      weatherCanvas = document.getElementById('weather-canvas');
+      if (!weatherCanvas) return;
+      weatherCtx = weatherCanvas.getContext('2d');
+      
+      function resizeCanvas() {
+        weatherCanvas.width = weatherCanvas.parentElement.clientWidth;
+        weatherCanvas.height = weatherCanvas.parentElement.clientHeight;
+      }
+      resizeCanvas();
+      window.addEventListener('resize', resizeCanvas);
+      
+      if (weatherAnimationId) cancelAnimationFrame(weatherAnimationId);
+      weatherAnimationId = requestAnimationFrame(weatherLoop);
+    }
+
+    function setWeatherEffect(weather) {
+      if (!weather) return;
+      activeWeatherType = weather.type || 'CLEAR';
+      weatherParticles = [];
+      lightningFlash = 0;
+      
+      const iconEl = document.getElementById('weather-hud-icon');
+      const typeEl = document.getElementById('weather-hud-type');
+      const descEl = document.getElementById('weather-hud-desc');
+      
+      if (iconEl) iconEl.textContent = weather.icon || '☀️';
+      if (typeEl) {
+        typeEl.textContent = (weather.type || 'Clear').toUpperCase();
+        typeEl.style.color = weather.color || '#fff';
+      }
+      if (descEl) {
+        let mult = weather.effect_weight_multiplier || 1.0;
+        descEl.textContent = `(${mult}x)`;
+      }
+
+      if (weather.lore) {
+        showToast(`${weather.icon || '☀️'} Weather Alert: ${weather.description}. ${weather.lore}`, 'info');
+      }
+
+      const maxParticles = activeWeatherType === 'STORM' ? 150 : (activeWeatherType === 'RAIN' ? 90 : (activeWeatherType === 'BLIZZARD' ? 120 : (activeWeatherType === 'FOG' ? 12 : 0)));
+      
+      if (activeWeatherType === 'FOG') {
+        for (let i = 0; i < maxParticles; i++) {
+          weatherParticles.push({
+            x: Math.random() * weatherCanvas.width,
+            y: Math.random() * weatherCanvas.height,
+            vx: (Math.random() - 0.5) * 0.4 - 0.2,
+            vy: (Math.random() - 0.5) * 0.1,
+            radius: Math.random() * 80 + 80,
+            opacity: Math.random() * 0.12 + 0.04
+          });
+        }
+      } else if (activeWeatherType === 'RAIN' || activeWeatherType === 'STORM') {
+        for (let i = 0; i < maxParticles; i++) {
+          weatherParticles.push({
+            x: Math.random() * weatherCanvas.width,
+            y: Math.random() * weatherCanvas.height - weatherCanvas.height,
+            vy: Math.random() * 12 + 12,
+            vx: Math.random() * 2 - 1 - 2,
+            length: Math.random() * 15 + 10,
+            width: Math.random() * 0.8 + 0.6
+          });
+        }
+      } else if (activeWeatherType === 'BLIZZARD') {
+        for (let i = 0; i < maxParticles; i++) {
+          weatherParticles.push({
+            x: Math.random() * weatherCanvas.width,
+            y: Math.random() * weatherCanvas.height - weatherCanvas.height,
+            vy: Math.random() * 2 + 1.5,
+            vx: Math.random() * 2 - 1 - 3,
+            radius: Math.random() * 2.5 + 0.8,
+            opacity: Math.random() * 0.5 + 0.25,
+            wobble: Math.random() * Math.PI,
+            wobbleSpeed: Math.random() * 0.04 + 0.015
+          });
+        }
+      }
+    }
+
+    function weatherLoop() {
+      if (!weatherCanvas || !weatherCtx) {
+        weatherAnimationId = requestAnimationFrame(weatherLoop);
+        return;
+      }
+      
+      weatherCtx.clearRect(0, 0, weatherCanvas.width, weatherCanvas.height);
+      
+      if (activeWeatherType === 'CLEAR') {
+        weatherAnimationId = requestAnimationFrame(weatherLoop);
+        return;
+      }
+      
+      if (activeWeatherType === 'STORM') {
+        if (lightningFlash > 0) {
+          weatherCtx.fillStyle = `rgba(238, 244, 255, ${lightningFlash})`;
+          weatherCtx.fillRect(0, 0, weatherCanvas.width, weatherCanvas.height);
+          lightningFlash -= 0.07;
+        } else if (Math.random() < 0.006) {
+          lightningFlash = Math.random() * 0.35 + 0.15;
+        }
+      }
+      
+      const w = weatherCanvas.width;
+      const h = weatherCanvas.height;
+      
+      if (activeWeatherType === 'RAIN' || activeWeatherType === 'STORM') {
+        weatherCtx.strokeStyle = 'rgba(156, 180, 214, 0.4)';
+        for (let p of weatherParticles) {
+          weatherCtx.lineWidth = p.width;
+          weatherCtx.beginPath();
+          weatherCtx.moveTo(p.x, p.y);
+          weatherCtx.lineTo(p.x + p.vx * 0.8, p.y + p.vy * 0.8);
+          weatherCtx.stroke();
+          
+          p.x += p.vx;
+          p.y += p.vy;
+          
+          if (p.y > h) {
+            p.y = -20;
+            p.x = Math.random() * w;
+          }
+        }
+      } else if (activeWeatherType === 'BLIZZARD') {
+        weatherCtx.fillStyle = 'rgba(240, 245, 255, 0.8)';
+        for (let p of weatherParticles) {
+          weatherCtx.beginPath();
+          weatherCtx.arc(p.x + Math.sin(p.wobble) * 2, p.y, p.radius, 0, Math.PI * 2);
+          weatherCtx.fill();
+          
+          p.x += p.vx;
+          p.y += p.vy;
+          p.wobble += p.wobbleSpeed;
+          
+          if (p.y > h) {
+            p.y = -10;
+            p.x = Math.random() * w;
+          }
+          if (p.x < -10) {
+            p.x = w + 10;
+          }
+        }
+      } else if (activeWeatherType === 'FOG') {
+        for (let p of weatherParticles) {
+          let grad = weatherCtx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.radius);
+          grad.addColorStop(0, `rgba(180, 185, 195, ${p.opacity})`);
+          grad.addColorStop(1, 'rgba(180, 185, 195, 0)');
+          
+          weatherCtx.fillStyle = grad;
+          weatherCtx.beginPath();
+          weatherCtx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+          weatherCtx.fill();
+          
+          p.x += p.vx;
+          p.y += p.vy;
+          
+          if (p.x < -p.radius) p.x = w + p.radius;
+          if (p.x > w + p.radius) p.x = -p.radius;
+          if (p.y < -p.radius) p.y = h + p.radius;
+          if (p.y > h + p.radius) p.y = -p.radius;
+        }
+      }
+      
+      weatherAnimationId = requestAnimationFrame(weatherLoop);
+    }
+
+    // GO
+    init();
+  </script>
+  <!-- ═══ Technology Tree Modal ═══ -->
+  <div class="modal-backdrop" id="tech-tree-modal" style="display:none;">
+    <div class="civ-panel modal-content" style="max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; padding: 24px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--gold); padding-bottom:12px; margin-bottom:16px;">
+        <h2 style="font-family:var(--font-title); color:var(--gold); margin:0; font-size:18px; letter-spacing:2px;">🧬 Algorithm Academy (Tech Tree)</h2>
+        <button class="civ-btn civ-btn-sm" onclick="closeTechTree()">✕ Close</button>
+      </div>
+      <p style="font-size:12px; color:var(--text-dim); margin-bottom:20px;">
+        Spend accumulated 🧪 Research Points (RP) to unlock advanced algorithms. You gain RP by completing turns and running highly efficient algorithms.
+      </p>
+      <div id="tech-tree-nodes" style="display:flex; flex-direction:column; gap:8px;"></div>
+    </div>
+  </div>
+
+</body>
+</html>

@@ -1,0 +1,1445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SIGNAL CITY — City Builder</title>
+  <meta name="description" content="Build your own city with algorithms on an isometric hex grid.">
+  <link rel="stylesheet" href="/static/css/civ6-theme.css">
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+</head>
+<body>
+  <!-- ═══ Resource Bar ═══ -->
+  <div class="resource-bar">
+    <div class="resource-group">
+      <div style="font-family:var(--font-title);font-size:14px;color:var(--gold-light);letter-spacing:2px;cursor:pointer;" onclick="window.location.href='/select'">
+        ◀ SIGNAL FORGE
+      </div>
+      <div class="resource-item"><span class="icon" id="hud-avatar">🧙</span> <span class="value" id="hud-username">Player</span></div>
+    </div>
+    <div class="resource-group">
+      <div class="resource-item"><span class="icon">🪙</span> <span class="value" id="hud-coins">500</span></div>
+      <div class="resource-item"><span class="icon">⚡</span> <span class="value" id="hud-power">0</span>/<span id="hud-power-cap">0</span></div>
+      <div class="resource-item"><span class="icon">👥</span> <span class="value" id="hud-pop">0</span></div>
+      <div class="resource-item"><span class="icon">😊</span> <span class="value" id="hud-happy">75</span>%</div>
+      <div class="resource-item"><span class="icon">🧪</span> <span class="value" id="hud-rp">100</span></div>
+      <div class="resource-item" style="color:var(--text-dim);">Turn <span class="value" id="hud-turn">1</span></div>
+      <div class="resource-item" id="weather-hud" style="cursor: help; margin-left: 8px; padding-left: 8px; border-left: 1px solid rgba(197, 160, 89, 0.2);" title="Weather event details. Set OWM_API_KEY in .env for live weather!">
+        <span class="icon" id="weather-hud-icon">☀️</span>
+        <span class="value" id="weather-hud-type" style="font-family:var(--font-title); font-size:11px;">Clear</span>
+        <span id="weather-hud-desc" style="font-size:9px; color:var(--text-dim); margin-left:3px;">(1.0x)</span>
+      </div>
+    </div>
+    <div class="resource-group">
+      <button class="civ-btn civ-btn-sm" onclick="openTechTree()">🧬 Research</button>
+      <button class="civ-btn civ-btn-sm" onclick="window.location.href='/select'">Modes</button>
+    </div>
+  </div>
+
+  <!-- ═══ Game Layout ═══ -->
+  <div class="game-layout">
+    <!-- LEFT SIDEBAR: Build Menu -->
+    <div class="sidebar" style="width:260px;">
+      <div class="sidebar-section">
+        <div class="sidebar-title">🏗️ Buildings</div>
+        <div id="build-menu"></div>
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-title">🛣️ Infrastructure</div>
+        <div id="infra-menu"></div>
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-title">⚡ Auto-Build (Algorithms)</div>
+        <div class="algo-palette" id="builder-algos"></div>
+      </div>
+      <div class="sidebar-section" style="max-height:180px;overflow-y:auto;">
+        <div class="sidebar-title">📜 Missions</div>
+        <div id="missions-list"></div>
+      </div>
+      <div class="sidebar-section flex-1 overflow-y-auto">
+        <div class="sidebar-title">📊 Economy</div>
+        <div id="economy-panel" style="font-size:12px;color:var(--text-dim);"></div>
+      </div>
+    </div>
+
+    <div class="resizer" id="left-resizer"></div>
+
+
+    <!-- CENTER: Phaser Canvas -->
+    <div class="game-center">
+      <div id="phaser-game" style="width:100%;height:100%;"></div>
+      <canvas id="weather-canvas" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:999;"></canvas>
+      <div class="bottom-bar">
+        <div class="flex items-center gap-3">
+          <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);" id="build-status">Click a hex to build</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button class="civ-btn civ-btn-sm" onclick="clearSelection()">🚫 Cancel</button>
+          <button class="civ-btn civ-btn-sm" onclick="undoBuild()">↩ Undo</button>
+        </div>
+        <button class="end-turn-btn" onclick="endTurn()">End Turn</button>
+      </div>
+    </div>
+
+    <div class="resizer" id="right-resizer"></div>
+
+    <!-- RIGHT SIDEBAR: Info -->
+    <div class="sidebar sidebar-right" id="right-sidebar" style="width:280px;">
+      <div class="sidebar-section">
+        <div class="sidebar-title">ℹ️ Selection Info</div>
+        <div id="selection-info" style="font-size:12px;color:var(--text-dim);">Click on a hex tile to see info.</div>
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-title">🧠 Explainer</div>
+        <div class="xai-panel" id="xai-panel">Build structures and use algorithms to optimize your city.</div>
+      </div>
+      <div class="sidebar-section" id="report-section" style="display:none;">
+        <div class="sidebar-title">🏆 Report</div>
+        <div id="report-card"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-container" id="toast-container"></div>
+
+  <script>
+    // ═══════════════════════════════════════════════════════════════════
+    // STATE
+    // ═══════════════════════════════════════════════════════════════════
+    const state = {
+      token: localStorage.getItem('sc_token'),
+      profile: {},
+      selectedBuilding: null,
+      buildings: [],
+      roads: [],
+      turn: 1,
+      coins: 2000,
+      power: 0,
+      powerCap: 0,
+      population: 0,
+      happiness: 75,
+      rp: 100,
+      hexGrid: [],
+      game: null,
+      activeQuestId: null,
+      ws: null,
+      running: false,
+      quests: [],
+      selectedNodes: [],
+    };
+
+    // Initialize profile and sync coins/RP
+    const savedProfile = localStorage.getItem('sc_profile');
+    if (savedProfile) {
+      state.profile = JSON.parse(savedProfile);
+      state.coins = state.profile.coins !== undefined ? state.profile.coins : 2000;
+      state.rp = state.profile.research_points !== undefined ? state.profile.research_points : 100;
+    } else {
+      state.profile = { 
+        _id: 'guest', 
+        username: 'Guest', 
+        coins: 2000, 
+        research_points: 100, 
+        level: 1, 
+        xp: 0, 
+        xp_to_next: 100, 
+        unlocked_algos: ['prim', 'fcfs', 'graham_scan', 'first_fit'],
+        completed_quests: []
+      };
+      state.coins = 2000;
+      state.rp = 100;
+      localStorage.setItem('sc_profile', JSON.stringify(state.profile));
+    }
+    if (!state.token) {
+      state.token = '';
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // BUILDING TYPES
+    // ═══════════════════════════════════════════════════════════════════
+    const BUILDING_TYPES = {
+      house:        { name: 'House', icon: '🏠', cost: 30,  power: -1, pop: 10, happy: 2,  color: 0x4CAF50, desc: 'Basic housing, +10 population' },
+      apartment:    { name: 'Apartment', icon: '🏢', cost: 80,  power: -3, pop: 30, happy: 0,  color: 0x66BB6A, desc: 'Dense housing, +30 population' },
+      factory:      { name: 'Factory', icon: '🏭', cost: 100, power: -5, pop: 0,  happy: -5, color: 0x757575, desc: 'Produces income, -5 happiness' },
+      hospital:     { name: 'Hospital', icon: '🏥', cost: 150, power: -3, pop: 0,  happy: 15, color: 0xE53935, desc: '+15 happiness (k-Median)' },
+      school:       { name: 'School', icon: '🏫', cost: 120, power: -2, pop: 0,  happy: 10, color: 0x1E88E5, desc: '+10 happiness, +RP' },
+      market:       { name: 'Market', icon: '🏪', cost: 60,  power: -1, pop: 0,  happy: 5,  color: 0xFDD835, desc: '+income per turn' },
+      park:         { name: 'Park', icon: '🌳', cost: 40,  power: 0,  pop: 0,  happy: 8,  color: 0x2E7D32, desc: '+8 happiness, no power' },
+      power_plant:  { name: 'Power Plant', icon: '⚡', cost: 200, power: 20, pop: 0,  happy: -3, color: 0xFF9800, desc: '+20 power capacity' },
+      fire_station: { name: 'Fire Station', icon: '🚒', cost: 130, power: -2, pop: 0,  happy: 8,  color: 0xD32F2F, desc: 'Emergency services (GWO)' },
+      antenna:      { name: 'Cell Tower', icon: '📡', cost: 90,  power: -2, pop: 0,  happy: 3,  color: 0x5C6BC0, desc: 'Wireless coverage (MFO)' },
+    };
+
+    const INFRA_TYPES = {
+      road:       { name: 'Road', icon: '🛣️', cost: 10, color: 0x9E9E9E, desc: 'Connect buildings (Dijkstra)' },
+      power_line: { name: 'Power Line', icon: '🔌', cost: 15, color: 0xFFC107, desc: 'Deliver power (Prim MST)' },
+    };
+
+    // ═══════════════════════════════════════════════════════════════════
+    // BUILD MENUS
+    // ═══════════════════════════════════════════════════════════════════
+    function renderBuildMenus() {
+      const bm = document.getElementById('build-menu');
+      bm.innerHTML = Object.entries(BUILDING_TYPES).map(([id, b]) =>
+        `<div class="algo-palette-item" onclick="selectBuilding('${id}')" id="build-${id}" title="${b.desc}">
+          <span class="name">${b.icon} ${b.name}</span>
+          <span class="cost">${b.cost}🪙</span>
+        </div>`
+      ).join('');
+
+      const im = document.getElementById('infra-menu');
+      im.innerHTML = Object.entries(INFRA_TYPES).map(([id, b]) =>
+        `<div class="algo-palette-item" onclick="selectBuilding('${id}')" id="build-${id}" title="${b.desc}">
+          <span class="name">${b.icon} ${b.name}</span>
+          <span class="cost">${b.cost}🪙</span>
+        </div>`
+      ).join('');
+
+      // Auto-build algorithms
+      const aa = document.getElementById('builder-algos');
+      aa.innerHTML = `
+        <div class="algo-palette-item" onclick="runAutoAlgo('prim')" title="Auto-connect power via MST">
+          <span class="name">⚡ Auto Power Grid</span><span class="cost">Prim</span>
+        </div>
+        <div class="algo-palette-item" onclick="runAutoAlgo('dijkstra')" title="Find shortest road between buildings">
+          <span class="name">🛣️ Optimal Route</span><span class="cost">Dijkstra</span>
+        </div>
+        <div class="algo-palette-item" onclick="runAutoAlgo('gwo')" title="Place fire stations optimally">
+          <span class="name">🚒 Fire Coverage</span><span class="cost">GWO</span>
+        </div>
+        <div class="algo-palette-item" onclick="runAutoAlgo('mfo')" title="Place cell towers optimally">
+          <span class="name">📡 Signal Grid</span><span class="cost">MFO</span>
+        </div>
+        <div class="algo-palette-item" onclick="runAutoAlgo('leiden')" title="Zone city into districts">
+          <span class="name">🏘️ Auto-Zone</span><span class="cost">Leiden</span>
+        </div>`;
+    }
+
+    function selectBuilding(id) {
+      const unlocked = new Set(state.profile.unlocked_algos || []);
+      if (id === 'hospital' && !unlocked.has('k_median')) {
+        showToast('🔒 You must research "k-Median Facility" first!', 'warning');
+        return;
+      }
+      if (id === 'apartment' && !unlocked.has('leiden')) {
+        showToast('🔒 You must research "Leiden Community" first!', 'warning');
+        return;
+      }
+      if (id === 'fire_station' && !unlocked.has('gwo')) {
+        showToast('🔒 You must research "Grey Wolf Optimizer" first!', 'warning');
+        return;
+      }
+      if (id === 'antenna' && !unlocked.has('mfo')) {
+        showToast('🔒 You must research "Moth Flame Optimization" first!', 'warning');
+        return;
+      }
+
+      state.selectedBuilding = id;
+      document.querySelectorAll('#build-menu .algo-palette-item, #infra-menu .algo-palette-item')
+        .forEach(el => el.style.background = '');
+      const el = document.getElementById(`build-${id}`);
+      if (el) el.style.background = 'var(--bg-hover)';
+      const info = BUILDING_TYPES[id] || INFRA_TYPES[id];
+      document.getElementById('build-status').textContent = `Placing ${info?.name || id}... Click a hex tile`;
+    }
+
+    function clearSelection() {
+      state.selectedBuilding = null;
+      document.querySelectorAll('#build-menu .algo-palette-item, #infra-menu .algo-palette-item')
+        .forEach(el => el.style.background = '');
+      document.getElementById('build-status').textContent = 'Click a hex to build';
+    }
+
+    function undoBuild() {
+      if (state.buildings.length === 0) return;
+      const last = state.buildings.pop();
+      const info = BUILDING_TYPES[last.type] || INFRA_TYPES[last.type];
+      if (info) {
+        state.coins += info.cost;
+        state.population -= (info.pop || 0);
+        state.happiness -= (info.happy || 0);
+        if (info.power > 0) state.powerCap -= info.power;
+        else state.power += Math.abs(info.power || 0);
+      }
+      updateHUD2();
+      showToast(`Removed ${info?.name || 'building'}`, 'info');
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // PHASER GAME
+    // ═══════════════════════════════════════════════════════════════════
+    const HEX_SIZE = 32;
+    const GRID_COLS = 20;
+    const GRID_ROWS = 16;
+
+    class CityScene extends Phaser.Scene {
+      constructor() { super({ key: 'CityScene' }); }
+
+      create() {
+        // Transparent camera background to reveal custom theme
+        this.hexGroup = this.add.group();
+        this.buildingGroup = this.add.group();
+        this.hexData = [];
+
+        // Generate isometric hex grid
+        for (let row = 0; row < GRID_ROWS; row++) {
+          for (let col = 0; col < GRID_COLS; col++) {
+            const x = col * HEX_SIZE * 1.75 + (row % 2 === 1 ? HEX_SIZE * 0.875 : 0) + 60;
+            const y = row * HEX_SIZE * 1.5 + 40;
+
+            const hex = this.add.polygon(x, y, this.hexPoints(HEX_SIZE * 0.9), 0x0C0E14, 0.6);
+            hex.setStrokeStyle(1, 0xc5a059, 0.15);
+            hex.setInteractive(new Phaser.Geom.Polygon(this.hexPoints(HEX_SIZE * 0.9)), Phaser.Geom.Polygon.Contains);
+
+            const cellData = { row, col, x, y, hex, building: null, terrain: 'empty' };
+            this.hexData.push(cellData);
+
+            hex.cellIndex = this.hexData.length - 1;
+
+            hex.on('pointerover', () => {
+              if (!cellData.building) hex.setStrokeStyle(2, 0xc5a059, 0.5);
+            });
+            hex.on('pointerout', () => {
+              if (!cellData.building) hex.setStrokeStyle(1, 0xc5a059, 0.15);
+            });
+            hex.on('pointerdown', () => this.onHexClick(cellData));
+          }
+        }
+
+        // Camera controls
+        this.input.on('wheel', (pointer, gameObjects, deltaX, deltaY) => {
+          const cam = this.cameras.main;
+          cam.zoom = Phaser.Math.Clamp(cam.zoom - deltaY * 0.001, 0.5, 2);
+        });
+
+        // Drag to pan
+        this.input.on('pointermove', (pointer) => {
+          if (pointer.isDown && !state.selectedBuilding) {
+            const cam = this.cameras.main;
+            cam.scrollX -= (pointer.x - pointer.prevPosition.x) / cam.zoom;
+            cam.scrollY -= (pointer.y - pointer.prevPosition.y) / cam.zoom;
+          }
+        });
+
+        state.hexGrid = this.hexData;
+        this.visualizerGraphics = this.add.graphics();
+      }
+
+      hexPoints(size) {
+        const points = [];
+        for (let i = 0; i < 6; i++) {
+          const angle = (60 * i - 30) * Math.PI / 180;
+          points.push(Math.cos(angle) * size);
+          points.push(Math.sin(angle) * size);
+        }
+        return points;
+      }
+
+      onHexClick(cell) {
+        if (!state.selectedBuilding) {
+          if (cell.building) {
+            const nodeId = `n_${cell.row}_${cell.col}`;
+            const idx = state.selectedNodes.indexOf(nodeId);
+            if (idx !== -1) {
+              state.selectedNodes.splice(idx, 1);
+              const info = BUILDING_TYPES[cell.building] || INFRA_TYPES[cell.building];
+              cell.hex.setStrokeStyle(2, info ? info.color : 0xc5a059, 0.8);
+            } else {
+              if (state.selectedNodes.length >= 2) {
+                const firstId = state.selectedNodes.shift();
+                const firstCell = state.hexGrid.find(c => `n_${c.row}_${c.col}` === firstId);
+                if (firstCell) {
+                  const info = BUILDING_TYPES[firstCell.building] || INFRA_TYPES[firstCell.building];
+                  firstCell.hex.setStrokeStyle(2, info ? info.color : 0xc5a059, 0.8);
+                }
+              }
+              state.selectedNodes.push(nodeId);
+              cell.hex.setStrokeStyle(3, 0xFFD700, 1.0);
+            }
+            
+            const info = BUILDING_TYPES[cell.building] || INFRA_TYPES[cell.building];
+            let selText = `<strong>${info?.icon} ${info?.name}</strong><br>${info?.desc || ''}<br>
+              <span class="text-muted">Row ${cell.row}, Col ${cell.col}</span>`;
+            if (state.selectedNodes.length === 1) {
+              selText += `<br><span style="color:var(--teal); font-weight:bold;">Selected as Start Node (Source)</span>`;
+            } else if (state.selectedNodes.length >= 2) {
+              selText += `<br><span style="color:var(--gold); font-weight:bold;">Selected: Start = ${state.selectedNodes[0]}, End = ${state.selectedNodes[1]}</span>`;
+            }
+            document.getElementById('selection-info').innerHTML = selText;
+          } else {
+            document.getElementById('selection-info').innerHTML =
+              `<span class="text-muted">Empty tile — Row ${cell.row}, Col ${cell.col}</span>`;
+          }
+          return;
+        }
+
+        if (cell.building) {
+          showToast('Tile already occupied!', 'warning');
+          return;
+        }
+
+        const buildId = state.selectedBuilding;
+        const info = BUILDING_TYPES[buildId] || INFRA_TYPES[buildId];
+        if (!info) return;
+
+        if (state.coins < info.cost) {
+          showToast(`Not enough coins! Need ${info.cost}🪙`, 'warning');
+          return;
+        }
+
+        // Place building
+        cell.building = buildId;
+        cell.hex.setFillStyle(info.color, 0.7);
+        cell.hex.setStrokeStyle(2, info.color, 0.8);
+
+        // Add icon text
+        this.add.text(cell.x - 8, cell.y - 8, info.icon, { fontSize: '16px' }).setDepth(10);
+
+        state.coins -= info.cost;
+        state.population += (info.pop || 0);
+        state.happiness += (info.happy || 0);
+        if (info.power > 0) state.powerCap += info.power;
+        else state.power += Math.abs(info.power || 0);
+
+        state.buildings.push({ type: buildId, row: cell.row, col: cell.col });
+
+        updateHUD2();
+        updateEconomy();
+        showToast(`Built ${info.name} (-${info.cost}🪙)`, 'success');
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // PHASER INIT
+    // ═══════════════════════════════════════════════════════════════════
+    const config = {
+      type: Phaser.AUTO,
+      parent: 'phaser-game',
+      width: window.innerWidth - 540,
+      height: window.innerHeight - 104,
+      transparent: true,
+      scene: [CityScene],
+      scale: {
+        mode: Phaser.Scale.RESIZE,
+        autoCenter: Phaser.Scale.CENTER_BOTH,
+      },
+    };
+    state.game = new Phaser.Game(config);
+
+    // ═══════════════════════════════════════════════════════════════════
+    // HUD & ECONOMY
+    // ═══════════════════════════════════════════════════════════════════
+    function saveProfile() {
+      state.profile.coins = state.coins;
+      state.profile.research_points = state.rp;
+      localStorage.setItem('sc_profile', JSON.stringify(state.profile));
+    }
+
+    function updateHUD2() {
+      const p = state.profile;
+      document.getElementById('hud-avatar').textContent = p.avatar || '🧙';
+      document.getElementById('hud-username').textContent = p.username || 'Player';
+      document.getElementById('hud-coins').textContent = state.coins;
+      document.getElementById('hud-power').textContent = state.power;
+      document.getElementById('hud-power-cap').textContent = state.powerCap;
+      document.getElementById('hud-pop').textContent = state.population;
+      document.getElementById('hud-happy').textContent = Math.round(state.happiness);
+      document.getElementById('hud-rp').textContent = state.rp;
+      document.getElementById('hud-turn').textContent = state.turn;
+    }
+
+    function getNeighbors(row, col) {
+      const neighbors = [];
+      const directions = (row % 2 === 1) ? [
+        {r: -1, c: 0}, {r: -1, c: 1},
+        {r: 0, c: -1}, {r: 0, c: 1},
+        {r: 1, c: 0},  {r: 1, c: 1}
+      ] : [
+        {r: -1, c: -1}, {r: -1, c: 0},
+        {r: 0, c: -1},  {r: 0, c: 1},
+        {r: 1, c: -1},  {r: 1, c: 0}
+      ];
+      for (const d of directions) {
+        const nr = row + d.r;
+        const nc = col + d.c;
+        if (nr >= 0 && nr < 16 && nc >= 0 && nc < 20) {
+          neighbors.push({row: nr, col: nc});
+        }
+      }
+      return neighbors;
+    }
+
+    function calculateCiv6Stats() {
+      const cells = state.hexGrid || [];
+      const powerPlants = cells.filter(c => c.building === 'power_plant');
+      const waterTowers = cells.filter(c => c.building === 'water_tower');
+      const factories = cells.filter(c => c.building === 'factory');
+      const markets = cells.filter(c => c.building === 'market');
+      const schools = cells.filter(c => c.building === 'school');
+      const houses = cells.filter(c => c.building === 'house');
+      const apartments = cells.filter(c => c.building === 'apartment');
+      
+      const powered = new Set();
+      const waterConnected = new Set();
+      
+      const powerSources = powerPlants.map(c => `n_${c.row}_${c.col}`);
+      const waterSources = waterTowers.map(c => `n_${c.row}_${c.col}`);
+      
+      if (powerSources.length > 0) {
+        const queue = [...powerSources];
+        const visited = new Set(queue);
+        while (queue.length > 0) {
+          const curr = queue.shift();
+          powered.add(curr);
+          
+          const parts = curr.split('_');
+          const r = parseInt(parts[1]), c = parseInt(parts[2]);
+          const neighbors = getNeighbors(r, c);
+          
+          for (const nb of neighbors) {
+            const nbId = `n_${nb.row}_${nb.col}`;
+            if (!visited.has(nbId)) {
+              const cell = cells.find(x => x.row === nb.row && x.col === nb.col);
+              if (cell && (cell.building === 'power_line' || cell.building)) {
+                visited.add(nbId);
+                queue.push(nbId);
+              }
+            }
+          }
+        }
+      }
+
+      if (waterSources.length > 0) {
+        const queue = [...waterSources];
+        const visited = new Set(queue);
+        while (queue.length > 0) {
+          const curr = queue.shift();
+          waterConnected.add(curr);
+          
+          const parts = curr.split('_');
+          const r = parseInt(parts[1]), c = parseInt(parts[2]);
+          const neighbors = getNeighbors(r, c);
+          
+          for (const nb of neighbors) {
+            const nbId = `n_${nb.row}_${nb.col}`;
+            if (!visited.has(nbId)) {
+              const cell = cells.find(x => x.row === nb.row && x.col === nb.col);
+              if (cell && (cell.building === 'road' || cell.building)) {
+                visited.add(nbId);
+                queue.push(nbId);
+              }
+            }
+          }
+        }
+      }
+
+      let totalIncome = 50;
+      let totalRp = 10;
+      let totalPopGrowth = 5;
+      let baseHappiness = 75;
+      let happinessPenalty = 0;
+
+      cells.forEach(cell => {
+        if (!cell.building) return;
+        const nodeId = `n_${cell.row}_${cell.col}`;
+        const hasPower = powered.has(nodeId) || cell.building === 'power_plant';
+        const hasWater = waterConnected.has(nodeId) || cell.building === 'water_tower';
+        
+        if (!hasPower && cell.building !== 'road' && cell.building !== 'power_line') {
+          happinessPenalty += 3;
+          return;
+        }
+        
+        const neighbors = getNeighbors(cell.row, cell.col);
+        const adjBuildings = neighbors.map(nb => cells.find(x => x.row === nb.row && x.col === nb.col)).filter(x => x && x.building);
+        
+        if (cell.building === 'factory') {
+          const adjRoads = adjBuildings.filter(b => b.building === 'road').length;
+          totalIncome += (30 + adjRoads * 5);
+          adjBuildings.forEach(b => {
+            if (b.building === 'house' || b.building === 'apartment') {
+              happinessPenalty += 3;
+            }
+          });
+        }
+        else if (cell.building === 'market') {
+          const adjFactories = adjBuildings.filter(b => b.building === 'factory').length;
+          totalIncome += (15 + adjFactories * 10);
+        }
+        else if (cell.building === 'school') {
+          const adjParks = adjBuildings.filter(b => b.building === 'park').length;
+          totalRp += (5 + adjParks * 3);
+        }
+        else if (cell.building === 'house') {
+          const hasAdjPark = adjBuildings.some(b => b.building === 'park');
+          baseHappiness += (hasAdjPark ? 4 : 2);
+          totalPopGrowth += 2;
+        }
+        else if (cell.building === 'apartment') {
+          totalPopGrowth += 5;
+        }
+        else if (cell.building === 'park') {
+          baseHappiness += 5;
+        }
+        else if (cell.building === 'hospital') {
+          baseHappiness += 10;
+        }
+        else if (cell.building === 'fire_station') {
+          baseHappiness += 5;
+        }
+        else if (cell.building === 'antenna') {
+          baseHappiness += 3;
+        }
+      });
+      
+      state.happiness = Math.max(0, Math.min(100, baseHappiness - happinessPenalty));
+      
+      return {
+        income: totalIncome,
+        rpGain: totalRp,
+        popGrowth: totalPopGrowth,
+        happiness: state.happiness
+      };
+    }
+
+    function updateEconomy() {
+      const stats = calculateCiv6Stats();
+      const powerBalance = state.powerCap - state.power;
+
+      document.getElementById('economy-panel').innerHTML = `
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+          <div><span class="text-muted">Income/Turn</span><br><span style="color:var(--gold);">+${stats.income}🪙</span></div>
+          <div><span class="text-muted">RP/Turn</span><br><span style="color:var(--purple);">+${stats.rpGain}🧪</span></div>
+          <div><span class="text-muted">Pop Growth</span><br><span style="color:var(--teal);">+${stats.popGrowth}👥</span></div>
+          <div><span class="text-muted">Power</span><br><span style="color:${powerBalance >= 0 ? 'var(--teal)' : 'var(--red)'};">${powerBalance >= 0 ? '+' : ''}${powerBalance}⚡</span></div>
+          <div><span class="text-muted">Buildings</span><br>${state.buildings.length}</div>
+          <div><span class="text-muted">Happiness</span><br><span style="color:${state.happiness >= 50 ? 'var(--teal)' : 'var(--red)'};">${Math.round(state.happiness)}%</span></div>
+        </div>`;
+    }
+
+    function endTurn() {
+      state.turn++;
+      const stats = calculateCiv6Stats();
+
+      state.coins += stats.income;
+      state.rp += stats.rpGain;
+      state.population += stats.popGrowth;
+
+      if (state.power > state.powerCap) {
+        state.happiness = Math.max(0, state.happiness - 5);
+        showToast('⚠ Power deficit! Happiness declining.', 'warning');
+      }
+
+      saveProfile();
+      updateHUD2();
+      updateEconomy();
+      showToast(`Turn ${state.turn} — +${stats.income}🪙 +${stats.rpGain}🧪 +${stats.popGrowth}👥`, 'info');
+      loadWeather(12.9716, 77.5946);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // AUTO-BUILD ALGORITHMS
+    // ═══════════════════════════════════════════════════════════════════
+    function resetVisualization2() {
+      const scene = state.game.scene.scenes[0];
+      if (scene && scene.visualizerGraphics) {
+        scene.visualizerGraphics.clear();
+      }
+      state.selectedNodes = [];
+      state.hexGrid.forEach(cell => {
+        if (cell.building) {
+          const info = BUILDING_TYPES[cell.building] || INFRA_TYPES[cell.building];
+          cell.hex.setFillStyle(info ? info.color : 0x0c0e14, 0.7);
+          cell.hex.setStrokeStyle(2, info ? info.color : 0xc5a059, 0.8);
+        } else {
+          cell.hex.setFillStyle(0x0C0E14, 0.6);
+          cell.hex.setStrokeStyle(1, 0xc5a059, 0.15);
+        }
+      });
+      document.getElementById('report-section').style.display = 'none';
+    }
+
+    async function runAutoAlgo(algoName) {
+      const unlocked = new Set(state.profile.unlocked_algos || []);
+      if (!unlocked.has(algoName)) {
+        showToast(`🔒 You must research "${algoName.toUpperCase()}" in the Tech Tree first!`, 'warning');
+        return;
+      }
+
+      if (state.running) {
+        showToast('Algorithm already running!', 'warning');
+        return;
+      }
+      
+      const builtCells = state.hexGrid.filter(c => c.building);
+      if (builtCells.length < 3) {
+        showToast('Place at least 3 buildings first!', 'warning');
+        return;
+      }
+
+      state.running = true;
+      resetVisualization2();
+      document.getElementById('xai-panel').innerHTML = `<p class="highlight">Running ${algoName.toUpperCase()}...</p>`;
+
+      const scene = state.game.scene.scenes[0];
+      if (!scene) return;
+
+      // Construct nodes
+      const nodes = builtCells.map(c => ({
+        id: `n_${c.row}_${c.col}`,
+        x: c.x,
+        y: c.y,
+        lat: c.y,
+        lon: c.x,
+        building: c.building
+      }));
+
+      // Construct edges
+      const edges = [];
+      if (algoName === 'dijkstra') {
+        // Only adjacent hexes (distance < 62)
+        for (let i = 0; i < nodes.length; i++) {
+          for (let j = i + 1; j < nodes.length; j++) {
+            const dist = Math.hypot(nodes[i].x - nodes[j].x, nodes[i].y - nodes[j].y);
+            if (dist < 62) {
+              edges.push({
+                source: nodes[i].id,
+                target: nodes[j].id,
+                weight: dist,
+                u: nodes[i].id,
+                v: nodes[j].id
+              });
+            }
+          }
+        }
+      } else {
+        // Complete graph for Prim, GWO, MFO, Leiden
+        for (let i = 0; i < nodes.length; i++) {
+          for (let j = i + 1; j < nodes.length; j++) {
+            const dist = Math.hypot(nodes[i].x - nodes[j].x, nodes[i].y - nodes[j].y);
+            edges.push({
+              source: nodes[i].id,
+              target: nodes[j].id,
+              weight: dist,
+              u: nodes[i].id,
+              v: nodes[j].id
+            });
+          }
+        }
+      }
+
+      try {
+        // POST to custom city cache
+        const cacheRes = await fetch('/api/city/custom', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            city_id: 'custom_forge',
+            city_name: 'Custom Forge',
+            nodes,
+            edges
+          })
+        });
+        if (!cacheRes.ok) throw new Error('Failed to cache custom graph');
+
+        const params = { speed_ms: 80 };
+        if (state.selectedNodes.length >= 1) params.start_node = state.selectedNodes[0];
+        if (state.selectedNodes.length >= 2) {
+          params.end_node = state.selectedNodes[1];
+          params.source_node = state.selectedNodes[0];
+          params.sink_node = state.selectedNodes[1];
+        }
+
+        const wsUrl = `ws://${window.location.host}/ws/algorithm`;
+        state.ws = new WebSocket(wsUrl);
+
+        state.ws.onopen = () => {
+          state.ws.send(JSON.stringify({
+            action: 'run',
+            algorithm: algoName,
+            city_id: 'custom_forge',
+            user_id: state.profile._id || '',
+            params
+          }));
+        };
+
+        state.ws.onmessage = (event) => {
+          try {
+            const msg = JSON.parse(event.data);
+            if (msg.type === 'step') {
+              animatePhaserDelta(msg.delta, scene);
+              if (msg.delta.xai_text) {
+                document.getElementById('xai-panel').innerHTML = `<p>${msg.delta.xai_text}</p>`;
+              }
+            } else if (msg.type === 'complete') {
+              state.running = false;
+              const summary = msg.summary;
+              if (summary.xai_text) {
+                document.getElementById('xai-panel').innerHTML = `<p class="highlight">${summary.xai_text}</p>`;
+              }
+              if (summary.grade) {
+                showReport2(summary.grade, summary, algoName);
+              }
+              checkQuestCompletion2(algoName);
+            } else if (msg.type === 'error') {
+              state.running = false;
+              showToast(msg.message || 'Algorithm execution error', 'error');
+            }
+          } catch (e) { console.error('WS parse error', e); }
+        };
+
+        state.ws.onerror = () => {
+          state.running = false;
+          showToast('WebSocket error', 'error');
+        };
+      } catch (e) {
+        state.running = false;
+        showToast('Failed to run algorithm: ' + e.message, 'error');
+      }
+    }
+
+    function animatePhaserDelta(delta, scene) {
+      if (!scene || !scene.visualizerGraphics) return;
+      const g = scene.visualizerGraphics;
+      const kind = delta.kind;
+
+      const getHexPos = (nodeId) => {
+        const cell = state.hexGrid.find(c => `n_${c.row}_${c.col}` === nodeId);
+        return cell ? { x: cell.x, y: cell.y } : null;
+      };
+
+      switch (kind) {
+        case 'edge_added':
+        case 'edge_relaxed': {
+          const u = getHexPos(delta.from_node);
+          const v = getHexPos(delta.to_node);
+          if (u && v) {
+            g.lineStyle(3.5, kind === 'edge_added' ? 0x1D9E75 : 0x8B5CF6, 0.85);
+            g.lineBetween(u.x, u.y, v.x, v.y);
+          }
+          break;
+        }
+        case 'edge_rejected': {
+          const u = getHexPos(delta.from_node);
+          const v = getHexPos(delta.to_node);
+          if (u && v) {
+            g.lineStyle(2, 0xE24B4A, 0.4);
+            g.lineBetween(u.x, u.y, v.x, v.y);
+          }
+          break;
+        }
+        case 'node_visited': {
+          const u = getHexPos(delta.node);
+          if (u) {
+            g.fillStyle(0x1D9E75, 0.45);
+            g.fillCircle(u.x, u.y, 14);
+          }
+          break;
+        }
+        case 'node_frontier': {
+          const node = delta.node || delta.to_node;
+          const u = getHexPos(node);
+          if (u) {
+            g.fillStyle(0x378ADD, 0.35);
+            g.fillCircle(u.x, u.y, 12);
+          }
+          break;
+        }
+        case 'path_found': {
+          if (delta.path) {
+            delta.path.forEach((nodeId, i) => {
+              setTimeout(() => {
+                const u = getHexPos(nodeId);
+                if (u) {
+                  g.fillStyle(0xFFD700, 0.7);
+                  g.fillCircle(u.x, u.y, 16);
+                  if (i < delta.path.length - 1) {
+                    const v = getHexPos(delta.path[i+1]);
+                    if (v) {
+                      g.lineStyle(4, 0xFFD700, 0.9);
+                      g.lineBetween(u.x, u.y, v.x, v.y);
+                    }
+                  }
+                }
+              }, i * 60);
+            });
+          }
+          break;
+        }
+        case 'iteration_complete': {
+          if (delta.top_nodes) {
+            delta.top_nodes.forEach(tn => {
+              const u = getHexPos(tn.node);
+              if (u) {
+                g.lineStyle(2, 0xFFD700, 0.85);
+                g.strokeCircle(u.x, u.y, 18);
+              }
+            });
+          }
+          break;
+        }
+        case 'facility_placed': {
+          if (delta.facility_node !== undefined) {
+            const u = getHexPos(delta.facility_node);
+            if (u) {
+              g.lineStyle(3, 0xFFD700, 1.0);
+              g.strokeCircle(u.x, u.y, 20);
+            }
+          }
+          break;
+        }
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // TOAST
+    // ═══════════════════════════════════════════════════════════════════
+    function showToast(msg, type = 'info') {
+      const c = document.getElementById('toast-container');
+      const t = document.createElement('div');
+      t.className = `toast ${type}`;
+      t.textContent = msg;
+      c.appendChild(t);
+      setTimeout(() => t.remove(), 5000);
+    }
+
+    function showReport2(grade, summary, algoName) {
+      document.getElementById('report-section').style.display = '';
+      
+      let algoSpecificHtml = '';
+      if (algoName === 'dijkstra' || algoName === 'contraction' || algoName === 'shortest_path') {
+        const distVal = summary.distance || summary.dist || 0;
+        const distStr = `${(distVal * 10).toFixed(0)} meters`;
+        const hops = summary.path ? summary.path.length - 1 : 0;
+        algoSpecificHtml = `
+          <div style="font-size:11px;color:var(--gold);margin-top:6px;padding:4px 0;border-top:1px solid rgba(255,255,255,0.08);display:flex;justify-content:space-between;">
+            <span>🗺️ Route Distance:</span>
+            <strong>${distStr}</strong>
+          </div>
+          <div style="font-size:11px;color:var(--text-dim);padding:4px 0;display:flex;justify-content:space-between;">
+            <span>🛡️ Route Segments (Hops):</span>
+            <strong>${hops} segments</strong>
+          </div>
+        `;
+      } else if (algoName === 'prim' || algoName === 'kruskal') {
+        let totalWeight = summary.total_weight || 0;
+        if (!totalWeight && summary.mst_edges) {
+          totalWeight = summary.mst_edges.reduce((sum, e) => sum + (e.weight || 0), 0);
+        }
+        const distStr = `${(totalWeight * 10).toFixed(0)} meters`;
+        algoSpecificHtml = `
+          <div style="font-size:11px;color:var(--teal);margin-top:6px;padding:4px 0;border-top:1px solid rgba(255,255,255,0.08);display:flex;justify-content:space-between;">
+            <span>🔌 Total Spanning Grid Length:</span>
+            <strong>${distStr}</strong>
+          </div>
+          <div style="font-size:11px;color:var(--text-dim);padding:4px 0;display:flex;justify-content:space-between;">
+            <span>🌲 Spanned Intersections:</span>
+            <strong>${summary.nodes_visited || (summary.mst_edges ? summary.mst_edges.length + 1 : 0)} nodes</strong>
+          </div>
+        `;
+      } else if (algoName === 'leiden' || algoName === 'louvain') {
+        const count = summary.n_communities || summary.num_communities || (summary.communities ? new Set(Object.values(summary.communities)).size : 0);
+        algoSpecificHtml = `
+          <div style="font-size:11px;color:var(--purple);margin-top:6px;padding:4px 0;border-top:1px solid rgba(255,255,255,0.08);display:flex;justify-content:space-between;">
+            <span>🏘️ Administrative Districts:</span>
+            <strong>${count} zones</strong>
+          </div>
+        `;
+        if (summary.communities) {
+          const colors = [0x4CAF50, 0x1E88E5, 0xE53935, 0xFDD835, 0x8B5CF6, 0x757575, 0x2E7D32, 0xFF9800];
+          Object.entries(summary.communities).forEach(([nodeId, commId]) => {
+            const cell = state.hexGrid.find(c => `n_${c.row}_${c.col}` === nodeId);
+            if (cell) {
+              const color = colors[commId % colors.length];
+              cell.hex.setFillStyle(color, 0.7);
+              cell.hex.setStrokeStyle(2.5, color, 0.95);
+            }
+          });
+        }
+      }
+
+      document.getElementById('report-card').innerHTML = `
+        <div class="report-card animate-slide-up" style="background: rgba(20, 24, 34, 0.95); border: 1.5px solid var(--gold); border-radius: 6px; padding: 12px; margin-top: 8px;">
+          <div class="report-card-header" style="display:flex;gap:12px;align-items:center;margin-bottom:8px;">
+            <div class="grade-badge" style="width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:bold;background:var(--gold);color:#121620;text-shadow:0 0 10px rgba(255,215,0,0.5);">${grade.grade}</div>
+            <div>
+              <div class="algo-name" style="font-weight:bold;color:#fff;font-size:13px;">${algoName.toUpperCase()} Evaluation</div>
+              <div class="algo-sub" style="font-size:10px;color:var(--text-dim);">${grade.comparison_text || ''}</div>
+            </div>
+          </div>
+          <div class="report-stats" style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;text-align:center;background:rgba(255,255,255,0.02);padding:6px;border-radius:4px;">
+            <div class="report-stat"><div class="label" style="font-size:8px;color:var(--text-muted);">Score</div><div class="value" style="font-weight:bold;font-size:11px;color:var(--teal);">${grade.efficiency_score}%</div></div>
+            <div class="report-stat"><div class="label" style="font-size:8px;color:var(--text-muted);">Ops</div><div class="value" style="font-weight:bold;font-size:11px;color:#fff;">${grade.actual_ops}</div></div>
+            <div class="report-stat"><div class="label" style="font-size:8px;color:var(--text-muted);">Theo</div><div class="value" style="font-weight:bold;font-size:11px;color:#fff;">${grade.theoretical_ops}</div></div>
+            <div class="report-stat"><div class="label" style="font-size:8px;color:var(--text-muted);">Ratio</div><div class="value" style="font-weight:bold;font-size:11px;color:var(--gold);">${grade.efficiency_ratio}x</div></div>
+          </div>
+          ${algoSpecificHtml}
+          <div style="display:flex;gap:16px;margin-bottom:6px;margin-top:8px;font-size:11px;font-weight:bold;justify-content:center;">
+            <span style="color:var(--teal);">+${grade.xp_earned} XP</span>
+            <span style="color:var(--gold);">+${grade.coins_earned} 🪙</span>
+            <span style="color:var(--purple);">+${grade.rp_earned} 🧪</span>
+          </div>
+        </div>`;
+
+      if (grade.grade === 'S') showToast('🌟 Perfect S-Grade! Outstanding!', 'achievement');
+      else if (grade.grade === 'A') showToast('Excellent A-Grade!', 'success');
+    }
+
+    async function checkQuestCompletion2(algoName) {
+      let earned_xp = 35;
+      let earned_coins = 20;
+      let earned_rp = 5;
+      
+      let questCompleted = false;
+      let q = null;
+      if (state.activeQuestId) {
+        q = state.quests.find(quest => quest.id === state.activeQuestId);
+        if (q) {
+          const reqAlgo = q.requirements?.algorithm || q.algorithm;
+          if (reqAlgo === algoName) {
+            questCompleted = true;
+            earned_xp += (q.reward_xp || 100);
+            earned_coins += (q.reward_coins || 50);
+            earned_rp += (q.reward_rp || 15);
+          }
+        }
+      }
+
+      state.profile.xp = (state.profile.xp || 0) + earned_xp;
+      state.coins = (state.coins || 0) + earned_coins;
+      state.profile.coins = state.coins;
+      state.rp = (state.rp || 0) + earned_rp;
+      state.profile.research_points = state.rp;
+      
+      if (questCompleted && q) {
+        state.profile.completed_quests = [...(state.profile.completed_quests || []), q.id];
+      }
+
+      let lvl = state.profile.level || 1;
+      let xp = state.profile.xp;
+      let xpNext = state.profile.xp_to_next || Math.round(100 * Math.pow(lvl, 1.5));
+      let leveledUp = false;
+      while (xp >= xpNext) {
+        xp -= xpNext;
+        lvl++;
+        xpNext = Math.round(100 * Math.pow(lvl, 1.5));
+        leveledUp = true;
+      }
+      if (leveledUp) {
+        state.profile.level = lvl;
+        state.profile.xp = xp;
+        state.profile.xp_to_next = xpNext;
+        showToast(`🎉 LEVEL UP! You are now Level ${lvl}!`, 'achievement');
+        
+        const tierUnlocks = {
+          2: ['kruskal', 'dijkstra', 'sjf', 'rr'],
+          3: ['edmonds_karp', 'gwo', 'woa', 'raft_consensus', 'count_sketch', 'transformer'],
+          4: ['leiden', 'louvain', 'pagerank', 'hho', 'vit', 'learned_index', 'xgboost', 'edf'],
+          5: ['contraction', 'k_median', 'coa', 'kan', 'diffusion']
+        };
+        const unlocked = new Set(state.profile.unlocked_algos && state.profile.unlocked_algos.length > 0 ? state.profile.unlocked_algos : ['prim', 'fcfs', 'graham_scan', 'first_fit']);
+        let newUnlocks = [];
+        for (const [l, algos] of Object.entries(tierUnlocks)) {
+          if (lvl >= parseInt(l)) {
+            for (const algo of algos) {
+              if (!unlocked.has(algo)) {
+                unlocked.add(algo);
+                newUnlocks.push(algo.toUpperCase());
+              }
+            }
+          }
+        }
+        state.profile.unlocked_algos = Array.from(unlocked);
+        if (newUnlocks.length > 0) {
+          showToast(`🔓 Unlocked: ${newUnlocks.join(', ')}!`, 'achievement');
+        }
+      } else {
+        state.profile.xp_to_next = xpNext;
+      }
+
+      if (questCompleted && q) {
+        showToast(`📜 Mission Complete: ${q.title}!`, 'achievement');
+        state.activeQuestId = null;
+      }
+
+      localStorage.setItem('sc_profile', JSON.stringify(state.profile));
+      updateHUD2();
+      updateEconomy();
+      renderMissions2();
+    }
+
+    async function init2() {
+      initResizableSidebars();
+      renderBuildMenus();
+      updateHUD2();
+      updateEconomy();
+      initWeatherCanvas();
+      loadWeather(12.9716, 77.5946);
+      
+      // Load algorithms
+      try {
+        const res = await fetch('/api/algorithms');
+        state.algos = await res.json();
+      } catch (e) { console.error('Failed to load algorithms', e); }
+      
+      try {
+        const res = await fetch('/api/quests');
+        state.quests = await res.json();
+        renderMissions2();
+      } catch (e) { console.error('Failed to load quests', e); }
+    }
+
+    // RESIZABLE SIDEBARS
+    function initResizableSidebars() {
+      const leftSidebar = document.getElementById('left-sidebar');
+      const rightSidebar = document.getElementById('right-sidebar');
+      const leftResizer = document.getElementById('left-resizer');
+      const rightResizer = document.getElementById('right-resizer');
+
+      if (leftResizer && leftSidebar) {
+        leftResizer.addEventListener('mousedown', function(e) {
+          e.preventDefault();
+          document.addEventListener('mousemove', resizeLeft);
+          document.addEventListener('mouseup', stopResizeLeft);
+        });
+        function resizeLeft(e) {
+          let newWidth = e.clientX;
+          if (newWidth > 220 && newWidth < 600) {
+            leftSidebar.style.width = newWidth + 'px';
+            if (state.game) {
+              const rWidth = rightSidebar ? rightSidebar.offsetWidth : 280;
+              state.game.scale.resize(window.innerWidth - newWidth - rWidth - 12, window.innerHeight - 52);
+            }
+          }
+        }
+        function stopResizeLeft() {
+          document.removeEventListener('mousemove', resizeLeft);
+          document.removeEventListener('mouseup', stopResizeLeft);
+        }
+      }
+
+      if (rightResizer && rightSidebar) {
+        rightResizer.addEventListener('mousedown', function(e) {
+          e.preventDefault();
+          document.addEventListener('mousemove', resizeRight);
+          document.addEventListener('mouseup', stopResizeRight);
+        });
+        function resizeRight(e) {
+          let newWidth = window.innerWidth - e.clientX;
+          if (newWidth > 220 && newWidth < 600) {
+            rightSidebar.style.width = newWidth + 'px';
+            if (state.game) {
+              const lWidth = leftSidebar ? leftSidebar.offsetWidth : 320;
+              state.game.scale.resize(window.innerWidth - lWidth - newWidth - 12, window.innerHeight - 52);
+            }
+          }
+        }
+        function stopResizeRight() {
+          document.removeEventListener('mousemove', resizeRight);
+          document.removeEventListener('mouseup', stopResizeRight);
+        }
+      }
+    }
+
+    // TECH TREE MODAL LOGIC
+    function openTechTree() {
+      const modal = document.getElementById('tech-tree-modal');
+      modal.style.display = 'flex';
+      renderTechTree();
+    }
+
+    function closeTechTree() {
+      document.getElementById('tech-tree-modal').style.display = 'none';
+    }
+
+    function renderTechTree() {
+      const container = document.getElementById('tech-tree-nodes');
+      if (!state.algos) return;
+      const unlocked = new Set(state.profile.unlocked_algos || []);
+      const userLevel = state.profile.level || 1;
+      const userRp = state.rp;
+      
+      let html = '';
+      
+      const sortedAlgos = Object.entries(state.algos).sort((a, b) => {
+        return (a[1].tier || 1) - (b[1].tier || 1);
+      });
+      
+      for (const [key, meta] of sortedAlgos) {
+        const isUnlocked = unlocked.has(key);
+        const reqLvl = meta.tier || 1;
+        const rpCost = reqLvl * 40;
+        const meetsLevel = userLevel >= reqLvl;
+        
+        let statusHtml = '';
+        if (isUnlocked) {
+          statusHtml = `<span style="color:var(--teal); font-weight:bold;">🔓 Unlocked</span>`;
+        } else if (!meetsLevel) {
+          statusHtml = `<span style="color:var(--text-muted);">🔒 Requires Level ${reqLvl}</span>`;
+        } else {
+          const disabled = userRp < rpCost ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : '';
+          statusHtml = `<button class="civ-btn civ-btn-sm" ${disabled} onclick="researchAlgo('${key}', ${rpCost})">🧪 Unlock (${rpCost} RP)</button>`;
+        }
+        
+        html += `
+          <div class="tech-node ${isUnlocked ? 'unlocked' : 'locked'}">
+            <div>
+              <strong style="color:var(--gold-light); font-size:13px;">${meta.name}</strong>
+              <div style="font-size:11px; color:var(--text-dim); margin-top:2px;">${meta.desc}</div>
+              <div style="font-size:10px; color:var(--text-muted); margin-top:4px;">Category: ${meta.category.toUpperCase()} | Tier ${meta.tier}</div>
+            </div>
+            <div>${statusHtml}</div>
+          </div>
+        `;
+      }
+      container.innerHTML = html;
+    }
+
+    async function researchAlgo(algoKey, rpCost) {
+      if (state.profile._id === 'guest') {
+        if (state.rp < rpCost) {
+          showToast('Insufficient RP', 'error');
+          return;
+        }
+        state.rp -= rpCost;
+        state.profile.research_points = state.rp;
+        if (!state.profile.unlocked_algos) state.profile.unlocked_algos = [];
+        state.profile.unlocked_algos.push(algoKey);
+        localStorage.setItem('sc_profile', JSON.stringify(state.profile));
+        updateHUD2();
+        updateEconomy();
+        renderTechTree();
+        showToast(`Unlocked ${algoKey.toUpperCase()} successfully!`, 'success');
+        return;
+      }
+      
+      try {
+        const res = await fetch(`/api/profile/${state.profile._id}/research`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.token}`
+          },
+          body: JSON.stringify({ algorithm: algoKey })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          state.profile = data.profile;
+          state.rp = data.profile.research_points;
+          localStorage.setItem('sc_profile', JSON.stringify(data.profile));
+          updateHUD2();
+          updateEconomy();
+          renderTechTree();
+          showToast(data.message || `Unlocked ${algoKey.toUpperCase()}!`, 'success');
+        } else {
+          showToast(data.detail || 'Research failed', 'error');
+        }
+      } catch (e) {
+        showToast('Research request failed', 'error');
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // WEATHER INTEGRATION
+    // ═══════════════════════════════════════════════════════════════════
+    let weatherCanvas, weatherCtx;
+    let weatherAnimationId = null;
+    let weatherParticles = [];
+    let activeWeatherType = 'CLEAR';
+    let lightningFlash = 0;
+
+    async function loadWeather(lat, lon) {
+      try {
+        const wRes = await fetch(`/api/weather/${lat}/${lon}`);
+        const weather = await wRes.json();
+        setWeatherEffect(weather);
+      } catch (err) {
+        console.error("Failed to load weather", err);
+      }
+    }
+
+    function initWeatherCanvas() {
+      weatherCanvas = document.getElementById('weather-canvas');
+      if (!weatherCanvas) return;
+      weatherCtx = weatherCanvas.getContext('2d');
+      
+      function resizeCanvas() {
+        weatherCanvas.width = weatherCanvas.parentElement.clientWidth;
+        weatherCanvas.height = weatherCanvas.parentElement.clientHeight;
+      }
+      resizeCanvas();
+      window.addEventListener('resize', resizeCanvas);
+      
+      if (weatherAnimationId) cancelAnimationFrame(weatherAnimationId);
+      weatherAnimationId = requestAnimationFrame(weatherLoop);
+    }
+
+    function setWeatherEffect(weather) {
+      if (!weather) return;
+      activeWeatherType = weather.type || 'CLEAR';
+      weatherParticles = [];
+      lightningFlash = 0;
+      
+      const iconEl = document.getElementById('weather-hud-icon');
+      const typeEl = document.getElementById('weather-hud-type');
+      const descEl = document.getElementById('weather-hud-desc');
+      
+      if (iconEl) iconEl.textContent = weather.icon || '☀️';
+      if (typeEl) {
+        typeEl.textContent = (weather.type || 'Clear').toUpperCase();
+        typeEl.style.color = weather.color || '#fff';
+      }
+      if (descEl) {
+        let mult = weather.effect_weight_multiplier || 1.0;
+        descEl.textContent = `(${mult}x)`;
+      }
+
+      if (weather.lore) {
+        showToast(`${weather.icon || '☀️'} Weather Alert: ${weather.description}. ${weather.lore}`, 'info');
+      }
+
+      const maxParticles = activeWeatherType === 'STORM' ? 150 : (activeWeatherType === 'RAIN' ? 90 : (activeWeatherType === 'BLIZZARD' ? 120 : (activeWeatherType === 'FOG' ? 12 : 0)));
+      
+      if (activeWeatherType === 'FOG') {
+        for (let i = 0; i < maxParticles; i++) {
+          weatherParticles.push({
+            x: Math.random() * weatherCanvas.width,
+            y: Math.random() * weatherCanvas.height,
+            vx: (Math.random() - 0.5) * 0.4 - 0.2,
+            vy: (Math.random() - 0.5) * 0.1,
+            radius: Math.random() * 80 + 80,
+            opacity: Math.random() * 0.12 + 0.04
+          });
+        }
+      } else if (activeWeatherType === 'RAIN' || activeWeatherType === 'STORM') {
+        for (let i = 0; i < maxParticles; i++) {
+          weatherParticles.push({
+            x: Math.random() * weatherCanvas.width,
+            y: Math.random() * weatherCanvas.height - weatherCanvas.height,
+            vy: Math.random() * 12 + 12,
+            vx: Math.random() * 2 - 1 - 2,
+            length: Math.random() * 15 + 10,
+            width: Math.random() * 0.8 + 0.6
+          });
+        }
+      } else if (activeWeatherType === 'BLIZZARD') {
+        for (let i = 0; i < maxParticles; i++) {
+          weatherParticles.push({
+            x: Math.random() * weatherCanvas.width,
+            y: Math.random() * weatherCanvas.height - weatherCanvas.height,
+            vy: Math.random() * 2 + 1.5,
+            vx: Math.random() * 2 - 1 - 3,
+            radius: Math.random() * 2.5 + 0.8,
+            opacity: Math.random() * 0.5 + 0.25,
+            wobble: Math.random() * Math.PI,
+            wobbleSpeed: Math.random() * 0.04 + 0.015
+          });
+        }
+      }
+    }
+
+    function weatherLoop() {
+      if (!weatherCanvas || !weatherCtx) {
+        weatherAnimationId = requestAnimationFrame(weatherLoop);
+        return;
+      }
+      
+      weatherCtx.clearRect(0, 0, weatherCanvas.width, weatherCanvas.height);
+      
+      if (activeWeatherType === 'CLEAR') {
+        weatherAnimationId = requestAnimationFrame(weatherLoop);
+        return;
+      }
+      
+      if (activeWeatherType === 'STORM') {
+        if (lightningFlash > 0) {
+          weatherCtx.fillStyle = `rgba(238, 244, 255, ${lightningFlash})`;
+          weatherCtx.fillRect(0, 0, weatherCanvas.width, weatherCanvas.height);
+          lightningFlash -= 0.07;
+        } else if (Math.random() < 0.006) {
+          lightningFlash = Math.random() * 0.35 + 0.15;
+        }
+      }
+      
+      const w = weatherCanvas.width;
+      const h = weatherCanvas.height;
+      
+      if (activeWeatherType === 'RAIN' || activeWeatherType === 'STORM') {
+        weatherCtx.strokeStyle = 'rgba(156, 180, 214, 0.4)';
+        for (let p of weatherParticles) {
+          weatherCtx.lineWidth = p.width;
+          weatherCtx.beginPath();
+          weatherCtx.moveTo(p.x, p.y);
+          weatherCtx.lineTo(p.x + p.vx * 0.8, p.y + p.vy * 0.8);
+          weatherCtx.stroke();
+          
+          p.x += p.vx;
+          p.y += p.vy;
+          
+          if (p.y > h) {
+            p.y = -20;
+            p.x = Math.random() * w;
+          }
+        }
+      } else if (activeWeatherType === 'BLIZZARD') {
+        weatherCtx.fillStyle = 'rgba(240, 245, 255, 0.8)';
+        for (let p of weatherParticles) {
+          weatherCtx.beginPath();
+          weatherCtx.arc(p.x + Math.sin(p.wobble) * 2, p.y, p.radius, 0, Math.PI * 2);
+          weatherCtx.fill();
+          
+          p.x += p.vx;
+          p.y += p.vy;
+          p.wobble += p.wobbleSpeed;
+          
+          if (p.y > h) {
+            p.y = -10;
+            p.x = Math.random() * w;
+          }
+          if (p.x < -10) {
+            p.x = w + 10;
+          }
+        }
+      } else if (activeWeatherType === 'FOG') {
+        for (let p of weatherParticles) {
+          let grad = weatherCtx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.radius);
+          grad.addColorStop(0, `rgba(180, 185, 195, ${p.opacity})`);
+          grad.addColorStop(1, 'rgba(180, 185, 195, 0)');
+          
+          weatherCtx.fillStyle = grad;
+          weatherCtx.beginPath();
+          weatherCtx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+          weatherCtx.fill();
+          
+          p.x += p.vx;
+          p.y += p.vy;
+          
+          if (p.x < -p.radius) p.x = w + p.radius;
+          if (p.x > w + p.radius) p.x = -p.radius;
+          if (p.y < -p.radius) p.y = h + p.radius;
+          if (p.y > h + p.radius) p.y = -p.radius;
+        }
+      }
+      
+      weatherAnimationId = requestAnimationFrame(weatherLoop);
+    }
+
+    // INIT
+    init2();
+  </script>
+  <!-- ═══ Technology Tree Modal ═══ -->
+  <div class="modal-backdrop" id="tech-tree-modal" style="display:none;">
+    <div class="civ-panel modal-content" style="max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; padding: 24px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--gold); padding-bottom:12px; margin-bottom:16px;">
+        <h2 style="font-family:var(--font-title); color:var(--gold); margin:0; font-size:18px; letter-spacing:2px;">🧬 Algorithm Academy (Tech Tree)</h2>
+        <button class="civ-btn civ-btn-sm" onclick="closeTechTree()">✕ Close</button>
+      </div>
+      <p style="font-size:12px; color:var(--text-dim); margin-bottom:20px;">
+        Spend accumulated 🧪 Research Points (RP) to unlock advanced algorithms. You gain RP by completing turns and running highly efficient algorithms.
+      </p>
+      <div id="tech-tree-nodes" style="display:flex; flex-direction:column; gap:8px;"></div>
+    </div>
+  </div>
+
+</body>
+</html>
