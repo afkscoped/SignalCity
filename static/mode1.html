@@ -78,6 +78,7 @@
           <button class="tab-btn" onclick="showAlgoTab('scheduling',this)">Sched</button>
         </div>
         <div class="algo-palette" id="algo-palette"></div>
+        <button class="civ-btn civ-btn-sm w-full mt-2" onclick="compareSelectedAlgorithms()">Compare Checked Algorithms</button>
       </div>
 
       <!-- Missions -->
@@ -195,7 +196,7 @@
       state.profile = JSON.parse(savedProfile);
       if (!state.profile.level) state.profile.level = 1;
       if (!state.profile.unlocked_algos || state.profile.unlocked_algos.length === 0) {
-        state.profile.unlocked_algos = ['prim', 'fcfs', 'graham_scan', 'first_fit'];
+        state.profile.unlocked_algos = ['prim', 'dijkstra', 'fcfs', 'edf'];
       }
     } else {
       state.profile = { 
@@ -206,7 +207,7 @@
         level: 1, 
         xp: 0, 
         xp_to_next: 100, 
-        unlocked_algos: ['prim', 'fcfs', 'graham_scan', 'first_fit'],
+        unlocked_algos: ['prim', 'dijkstra', 'fcfs', 'edf'],
         completed_quests: []
       };
       localStorage.setItem('sc_profile', JSON.stringify(state.profile));
@@ -431,6 +432,8 @@
     }
 
     function onNodeClick(nodeId) {
+      if (state.selectedNodes.includes(nodeId)) return;
+      if (state.selectedNodes.length >= 2) resetNodeSelectionOnly();
       state.selectedNodes.push(nodeId);
       // Highlight
       state.graphLayer.eachLayer(l => {
@@ -467,7 +470,7 @@
           const locked = !unlocked.has(algo.id);
           html += `<div class="algo-palette-item ${locked ? 'locked' : ''}" 
                         onclick="${locked ? '' : `selectAlgo('${algo.id}')`}" 
-                        title="${algo.desc || ''}"
+                        title="${algo.use_case || algo.desc || ''} | Complexity: ${algo.complexity || '-'}"
                         id="algo-item-${algo.id}">
             <span class="name">${locked ? '🔒 ' : ''}${algo.name}</span>
             <span class="cost">${algo.cost}🪙</span>
@@ -475,6 +478,28 @@
         }
       }
       palette.innerHTML = html;
+      palette.querySelectorAll('.algo-palette-item').forEach(item => {
+        const id = item.id.replace('algo-item-', '');
+        const nameEl = item.querySelector('.name');
+        if (nameEl && !nameEl.querySelector('.compare-check')) {
+          const checked = document.createElement('input');
+          checked.type = 'checkbox';
+          checked.className = 'compare-check';
+          checked.value = id;
+          checked.style.marginRight = '6px';
+          checked.onclick = (event) => event.stopPropagation();
+          if (item.classList.contains('locked')) checked.disabled = true;
+          nameEl.prepend(checked);
+        }
+        const meta = state.algos[id] || {};
+        if (!item.querySelector('.algo-detail')) {
+          const detail = document.createElement('div');
+          detail.className = 'algo-detail';
+          detail.style.cssText = 'font-size:10px;color:var(--text-dim);line-height:1.25;margin-top:4px;width:100%;';
+          detail.innerHTML = `${meta.use_case || meta.desc || ''}<br><span style="color:var(--gold);">Complexity:</span> ${meta.complexity || '-'}`;
+          item.appendChild(detail);
+        }
+      });
     }
 
     function showAlgoTab(tab, btn) {
@@ -521,7 +546,7 @@
       state.stepLog = [];
       state.stepIndex = 0;
       state.paused = false;
-      resetVisualization();
+      resetVisualization(false);
 
       const info = state.algos[algoName] || {};
       setStatus(`Running ${info.name || algoName}...`);
@@ -690,8 +715,17 @@
       });
     }
 
-    function resetVisualization() {
+    function resetNodeSelectionOnly() {
       state.selectedNodes = [];
+      state.graphLayer.eachLayer(l => {
+        if (l.nodeId !== undefined) {
+          l.setStyle({ fillColor: '#5A6474', fillOpacity: 0.7, radius: 3 });
+        }
+      });
+    }
+
+    function resetVisualization(clearSelectedNodes = true) {
+      if (clearSelectedNodes) state.selectedNodes = [];
       state.graphLayer.eachLayer(l => {
         if (l.edgeU !== undefined) {
           l.setStyle({ color: 'rgba(197,160,89,0.25)', weight: 1.5, opacity: 0.8 });
@@ -826,6 +860,57 @@
       else if (grade.grade === 'A') showToast('Excellent A-Grade!', 'success');
     }
 
+    async function compareSelectedAlgorithms() {
+      if (!state.graphData) {
+        showToast('Load a city first!', 'warning');
+        return;
+      }
+      const checked = Array.from(document.querySelectorAll('.compare-check:checked')).map(el => el.value);
+      if (checked.length < 2) {
+        showToast('Check at least two unlocked algorithms to compare.', 'warning');
+        return;
+      }
+      const params = {};
+      if (state.selectedNodes.length >= 1) params.start_node = state.selectedNodes[0];
+      if (state.selectedNodes.length >= 2) {
+        params.end_node = state.selectedNodes[1];
+        params.source_node = state.selectedNodes[0];
+        params.sink_node = state.selectedNodes[1];
+      }
+      setStatus(`Comparing ${checked.length} algorithms...`);
+      try {
+        const res = await fetch('/api/algorithms/compare', {
+          method: 'POST',
+          headers: apiHeaders(),
+          body: JSON.stringify({ city_id: state.cityId || 'bengaluru', algorithms: checked, params })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Comparison failed');
+        const rows = data.results.map(r => `
+          <tr>
+            <td style="padding:5px;color:var(--gold-light);">${r.name}</td>
+            <td style="padding:5px;">${r.complexity}</td>
+            <td style="padding:5px;text-align:right;">${r.ops}</td>
+            <td style="padding:5px;text-align:right;">${r.efficiency_score}%</td>
+            <td style="padding:5px;text-align:center;color:var(--gold);">${r.grade}</td>
+          </tr>`).join('');
+        document.getElementById('xai-panel').innerHTML = `
+          <h4 style="color:var(--gold);margin-bottom:6px;">Algorithm Comparison</h4>
+          <p>Same city, same selected source/target, same weather-adjusted road weights. Use this to compare practical fit, Big-O, operation count, and game reward quality.</p>
+          <table style="width:100%;font-size:10px;border-collapse:collapse;margin-top:8px;">
+            <thead><tr style="color:var(--text-muted);text-align:left;"><th>Algorithm</th><th>Big-O</th><th>Ops</th><th>Eff.</th><th>Grade</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>`;
+        document.getElementById('algo-stats').innerHTML = `
+          <div><strong>${data.node_count}</strong> intersections, <strong>${data.edge_count}</strong> roads</div>
+          <div style="margin-top:6px;color:var(--text-dim);">Weather: ${data.weather ? `${data.weather.type} (${data.weather.effect_weight_multiplier}x road weight, ${data.weather.effect_capacity_multiplier}x capacity)` : 'clear/default'}</div>`;
+        setStatus('Comparison complete');
+      } catch (e) {
+        showToast(e.message, 'error');
+        setStatus('Comparison failed');
+      }
+    }
+
     // ═══════════════════════════════════════════════════════════════════
     // NLP
     // ═══════════════════════════════════════════════════════════════════
@@ -915,9 +1000,9 @@
       if (reqAlgo && !unlocked.has(reqAlgo)) {
         let reqLevel = 1;
         const tierUnlocks = {
-          2: ['kruskal', 'dijkstra', 'sjf', 'rr'],
+          2: ['kruskal', 'sjf', 'round_robin'],
           3: ['edmonds_karp', 'gwo', 'woa', 'raft_consensus', 'count_sketch', 'transformer'],
-          4: ['leiden', 'louvain', 'pagerank', 'hho', 'vit', 'learned_index', 'xgboost', 'edf'],
+          4: ['leiden', 'louvain', 'hho', 'swin', 'rmi', 'xgboost'],
           5: ['contraction', 'k_median', 'coa', 'kan', 'diffusion']
         };
         for (const [lvl, algos] of Object.entries(tierUnlocks)) {
@@ -934,9 +1019,9 @@
 
     function unlockAlgosForLevel(level) {
       const tierUnlocks = {
-        2: ['kruskal', 'dijkstra', 'sjf', 'rr'],
+          2: ['kruskal', 'sjf', 'round_robin'],
         3: ['edmonds_karp', 'gwo', 'woa', 'raft_consensus', 'count_sketch', 'transformer'],
-        4: ['leiden', 'louvain', 'pagerank', 'hho', 'vit', 'learned_index', 'xgboost', 'edf'],
+        4: ['leiden', 'louvain', 'hho', 'swin', 'rmi', 'xgboost'],
         5: ['contraction', 'k_median', 'coa', 'kan', 'diffusion']
       };
       

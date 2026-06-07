@@ -39,7 +39,7 @@
   <!-- ═══ Game Layout ═══ -->
   <div class="game-layout">
     <!-- LEFT SIDEBAR: Build Menu -->
-    <div class="sidebar" style="width:260px;">
+    <div class="sidebar" id="left-sidebar" style="width:260px;">
       <div class="sidebar-section">
         <div class="sidebar-title">🏗️ Buildings</div>
         <div id="build-menu"></div>
@@ -143,7 +143,7 @@
         level: 1, 
         xp: 0, 
         xp_to_next: 100, 
-        unlocked_algos: ['prim', 'fcfs', 'graham_scan', 'first_fit'],
+        unlocked_algos: ['prim', 'dijkstra', 'fcfs', 'edf'],
         completed_quests: []
       };
       state.coins = 2000;
@@ -712,6 +712,20 @@
             }
           }
         }
+        if (edges.length === 0) {
+          for (let i = 0; i < nodes.length; i++) {
+            for (let j = i + 1; j < nodes.length; j++) {
+              const dist = Math.hypot(nodes[i].x - nodes[j].x, nodes[i].y - nodes[j].y);
+              edges.push({
+                source: nodes[i].id,
+                target: nodes[j].id,
+                weight: dist,
+                u: nodes[i].id,
+                v: nodes[j].id
+              });
+            }
+          }
+        }
       } else {
         // Complete graph for Prim, GWO, MFO, Leiden
         for (let i = 0; i < nodes.length; i++) {
@@ -743,6 +757,9 @@
         if (!cacheRes.ok) throw new Error('Failed to cache custom graph');
 
         const params = { speed_ms: 80 };
+        if (state.selectedNodes.length < 2 && nodes.length >= 2) {
+          state.selectedNodes = [nodes[0].id, nodes[nodes.length - 1].id];
+        }
         if (state.selectedNodes.length >= 1) params.start_node = state.selectedNodes[0];
         if (state.selectedNodes.length >= 2) {
           params.end_node = state.selectedNodes[1];
@@ -1032,9 +1049,9 @@
         showToast(`🎉 LEVEL UP! You are now Level ${lvl}!`, 'achievement');
         
         const tierUnlocks = {
-          2: ['kruskal', 'dijkstra', 'sjf', 'rr'],
+          2: ['kruskal', 'sjf', 'round_robin'],
           3: ['edmonds_karp', 'gwo', 'woa', 'raft_consensus', 'count_sketch', 'transformer'],
-          4: ['leiden', 'louvain', 'pagerank', 'hho', 'vit', 'learned_index', 'xgboost', 'edf'],
+          4: ['leiden', 'louvain', 'hho', 'swin', 'rmi', 'xgboost'],
           5: ['contraction', 'k_median', 'coa', 'kan', 'diffusion']
         };
         const unlocked = new Set(state.profile.unlocked_algos && state.profile.unlocked_algos.length > 0 ? state.profile.unlocked_algos : ['prim', 'fcfs', 'graham_scan', 'first_fit']);

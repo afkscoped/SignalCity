@@ -198,6 +198,7 @@ def harris_hawks_optimization(graph: WeightedGraph, k: int = 3, max_iter: int = 
         "facility_type": "fire_station",
         "fitness": rabbit_fit,
         "op_count": max_iter * pop_size,
+        "theoretical_complexity": "O(Max_Iter * Pop * V * k)",
         "xai_text": f"Harris Hawks Optimization complete! Stations placed at {rabbit_pos}."
     }
 
@@ -246,6 +247,7 @@ def coati_optimization_algorithm(graph: WeightedGraph, k: int = 3, max_iter: int
         "facility_type": "fire_station",
         "fitness": best_fit,
         "op_count": max_iter * pop_size,
+        "theoretical_complexity": "O(Max_Iter * Pop * V * k)",
         "xai_text": f"Coati Optimization complete! Stations placed at {best_pos}."
     }
 
@@ -261,7 +263,7 @@ def whale_optimization_algorithm(graph: WeightedGraph, max_iter: int = 5, seed: 
     Whales represent array of green times (seconds) for 4 main hubs.
     """
     rng = random.Random(seed)
-    hubs = sorted(graph.nodes.keys())[:4]  # optimize traffic signals at first 4 nodes
+    hubs = sorted(graph.nodes.keys(), key=str)[:4]  # optimize traffic signals at first 4 nodes
     if len(hubs) < 4: hubs = [0, 1, 2, 3]
     
     pop_size = 5
@@ -327,6 +329,7 @@ def whale_optimization_algorithm(graph: WeightedGraph, max_iter: int = 5, seed: 
         "fitness": best_delay,
         "optimal_green_times": [round(t,1) for t in best_times],
         "op_count": max_iter * pop_size,
+        "theoretical_complexity": "O(Max_Iter * Pop * Signals)",
         "xai_text": f"Whale Optimization complete! Signal timings established for hubs {hubs}: "
                    f"{[round(t,1) for t in best_times]} seconds. Delay minimized to {best_delay:.2f}."
     }
@@ -335,7 +338,7 @@ def whale_optimization_algorithm(graph: WeightedGraph, max_iter: int = 5, seed: 
 def runge_kutta_optimizer(graph: WeightedGraph, max_iter: int = 5, seed: int = 47):
     """Runge-Kutta Optimization Algorithm (2021) for signal delays. Uses RK slope equations."""
     rng = random.Random(seed)
-    hubs = sorted(graph.nodes.keys())[:4]
+    hubs = sorted(graph.nodes.keys(), key=str)[:4]
     if len(hubs) < 4: hubs = [0, 1, 2, 3]
     pop_size = 5
     agents = [[rng.uniform(10, 60) for _ in range(4)] for _ in range(pop_size)]
@@ -377,6 +380,8 @@ def runge_kutta_optimizer(graph: WeightedGraph, max_iter: int = 5, seed: int = 4
         "facility_type": "traffic_light",
         "fitness": best_fit,
         "optimal_green_times": [round(x,1) for x in best_pos],
+        "op_count": max_iter * pop_size,
+        "theoretical_complexity": "O(Max_Iter * Pop * Signals)",
         "xai_text": f"Runge-Kutta Optimization complete! Signal times: {[round(x,1) for x in best_pos]}s."
     }
 
@@ -384,7 +389,7 @@ def runge_kutta_optimizer(graph: WeightedGraph, max_iter: int = 5, seed: int = 4
 def painting_training_optimizer(graph: WeightedGraph, max_iter: int = 5, seed: int = 48):
     """Painting Training-Based Optimization (2025) for traffic signals. Simulates painting strokes."""
     rng = random.Random(seed)
-    hubs = sorted(graph.nodes.keys())[:4]
+    hubs = sorted(graph.nodes.keys(), key=str)[:4]
     if len(hubs) < 4: hubs = [0, 1, 2, 3]
     pop_size = 5
     canvases = [[rng.uniform(10, 60) for _ in range(4)] for _ in range(pop_size)]
@@ -425,6 +430,8 @@ def painting_training_optimizer(graph: WeightedGraph, max_iter: int = 5, seed: i
         "facility_type": "traffic_light",
         "fitness": best_fit,
         "optimal_green_times": [round(x,1) for x in best_stroke],
+        "op_count": max_iter * pop_size,
+        "theoretical_complexity": "O(Max_Iter * Pop * Signals)",
         "xai_text": f"PTBO signal layout complete! Optimized green phases: {[round(x,1) for x in best_stroke]}s."
     }
 
@@ -432,7 +439,7 @@ def painting_training_optimizer(graph: WeightedGraph, max_iter: int = 5, seed: i
 def marine_predators_algorithm(graph: WeightedGraph, max_iter: int = 5, seed: int = 49):
     """Marine Predators Algorithm (2020) for public transit schedules. Prey-predator loops."""
     rng = random.Random(seed)
-    hubs = sorted(graph.nodes.keys())[:4]
+    hubs = sorted(graph.nodes.keys(), key=str)[:4]
     if len(hubs) < 4: hubs = [0, 1, 2, 3]
     pop_size = 5
     prey = [[rng.uniform(10, 60) for _ in range(4)] for _ in range(pop_size)]
@@ -474,6 +481,8 @@ def marine_predators_algorithm(graph: WeightedGraph, max_iter: int = 5, seed: in
         "facility_type": "traffic_light",
         "fitness": best_fit,
         "optimal_green_times": [round(x,1) for x in elite_predator],
+        "op_count": max_iter * pop_size,
+        "theoretical_complexity": "O(Max_Iter * Pop * Signals)",
         "xai_text": f"MPA schedule optimization complete! Signal times: {[round(x,1) for x in elite_predator]}s."
     }
 
@@ -608,6 +617,8 @@ def grasshopper_optimization_algorithm(graph: WeightedGraph, k: int = 3, max_ite
         "facilities": best_pos,
         "facility_type": "antenna",
         "fitness": best_fit,
+        "op_count": max_iter * pop_size,
+        "theoretical_complexity": "O(Max_Iter * Pop * V)",
         "xai_text": f"Grasshopper antenna grid laid at {best_pos} with coverage {best_fit:.2f}."
     }
 
@@ -657,6 +668,8 @@ def aquila_optimizer(graph: WeightedGraph, k: int = 3, max_iter: int = 5, seed: 
         "facilities": best_pos,
         "facility_type": "antenna",
         "fitness": best_fit,
+        "op_count": max_iter * pop_size,
+        "theoretical_complexity": "O(Max_Iter * Pop * V)",
         "xai_text": f"Aquila tower optimization complete! Antennas at {best_pos}."
     }
 
@@ -708,6 +721,8 @@ def dandelion_optimizer(graph: WeightedGraph, k: int = 3, max_iter: int = 5, see
         "facilities": best_pos,
         "facility_type": "antenna",
         "fitness": best_fit,
+        "op_count": max_iter * pop_size,
+        "theoretical_complexity": "O(Max_Iter * Pop * V)",
         "xai_text": f"Dandelion optimization complete! Antennas set at {best_pos}."
     }
 
@@ -829,6 +844,8 @@ def slime_mould_algorithm(graph: WeightedGraph, max_iter: int = 5, seed: int = 5
         "kind": "algorithm_done",
         "upgraded_edges": [(edges[i]["u"], edges[i]["v"]) for i in best_tubes],
         "fitness": best_fit,
+        "op_count": max_iter * pop_size,
+        "theoretical_complexity": "O(Max_Iter * Pop)",
         "xai_text": f"Slime Mould optimization complete! Organic highways: {[(edges[i]['u'], edges[i]['v']) for i in best_tubes]}."
     }
 
@@ -883,6 +900,8 @@ def arithmetic_optimization_algorithm(graph: WeightedGraph, max_iter: int = 5, s
         "kind": "algorithm_done",
         "upgraded_edges": [(edges[i]["u"], edges[i]["v"]) for i in best_pos],
         "fitness": best_fit,
+        "op_count": max_iter * pop_size,
+        "theoretical_complexity": "O(Max_Iter * Pop)",
         "xai_text": f"AOA optimization complete! Utility links upgraded: {[(edges[i]['u'], edges[i]['v']) for i in best_pos]}."
     }
 
@@ -926,5 +945,7 @@ def gorilla_troops_optimizer(graph: WeightedGraph, max_iter: int = 5, seed: int 
         "kind": "algorithm_done",
         "upgraded_edges": [(edges[i]["u"], edges[i]["v"]) for i in silverback_pos],
         "fitness": silverback_fit,
+        "op_count": max_iter * pop_size,
+        "theoretical_complexity": "O(Max_Iter * Pop)",
         "xai_text": f"GTO complete! Utility lines upgraded at: {[(edges[i]['u'], edges[i]['v']) for i in silverback_pos]}."
     }

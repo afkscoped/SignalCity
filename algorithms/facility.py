@@ -42,7 +42,7 @@ def k_median_facility(graph: WeightedGraph, k: int = 5, facility_type: str = "ho
     if graph.node_count == 0 or k <= 0:
         return
 
-    node_list = sorted(graph.nodes.keys())
+    node_list = sorted(graph.nodes.keys(), key=str)
     n = len(node_list)
     k = min(k, n)
     op_count = 0

@@ -13,7 +13,7 @@ def raft_consensus(graph: WeightedGraph, seed: int = 42):
     Raft Consensus Algorithm simulation.
     Simulates leader election and log replication between 5 major substation nodes.
     """
-    nodes = sorted(graph.nodes.keys())[:5]
+    nodes = sorted(graph.nodes.keys(), key=str)[:5]
     if len(nodes) < 5: nodes = [0, 1, 2, 3, 4]
     
     rng = random.Random(seed)
@@ -111,7 +111,7 @@ def xgboost_split_finding(graph: WeightedGraph, max_depth: int = 3, seed: int = 
     XGBoost Exact Greedy Split Finding.
     Partitions city nodes into zones by choosing spatial splits (x or y) that maximize loss gain.
     """
-    nodes = list(graph.nodes.keys())
+    nodes = sorted(graph.nodes.keys(), key=str)
     n = len(nodes)
     if n == 0: return
     
@@ -248,7 +248,7 @@ def learned_index_rmi(graph: WeightedGraph, seed: int = 45):
     Recursive Model Index (RMI) Learned Index Structure.
     Replaces B-Trees with simple linear regression models to find node memory addresses/IDs.
     """
-    nodes = list(graph.nodes.keys())
+    nodes = sorted(graph.nodes.keys(), key=str)
     n = len(nodes)
     if n == 0: return
     
@@ -258,6 +258,7 @@ def learned_index_rmi(graph: WeightedGraph, seed: int = 45):
     
     # Train Level 1 model (x = slope * id + intercept)
     # Simple mock linear fit
+    node_positions = {node: idx for idx, node in enumerate(nodes)}
     slope = 200.0 / max(1, n)
     intercept = -100.0
     
@@ -268,13 +269,14 @@ def learned_index_rmi(graph: WeightedGraph, seed: int = 45):
     
     for key in search_keys:
         # 1. Level 1 model prediction
-        predicted_pos = slope * key + intercept
+        ordinal_key = node_positions[key]
+        predicted_pos = slope * ordinal_key + intercept
         # 2. Select Level 2 model based on prediction
         l2_model_idx = 0 if predicted_pos < 0 else 1
         
         # Local model adjustment
         l2_slope = slope * 1.1 if l2_model_idx == 0 else slope * 0.9
-        l2_prediction = l2_slope * key + (intercept * 0.8)
+        l2_prediction = l2_slope * ordinal_key + (intercept * 0.8)
         
         # 3. Local search inside predicted error bounds
         node_val = graph.nodes[key]

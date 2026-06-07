@@ -11,26 +11,57 @@ from routers.city import get_cached_city
 
 router = APIRouter(tags=["algorithms"])
 
+def _algo(name, category, tier, cost, desc, use_case, complexity, output):
+    return {
+        "name": name,
+        "category": category,
+        "tier": tier,
+        "cost": cost,
+        "desc": desc,
+        "use_case": use_case,
+        "complexity": complexity,
+        "output": output,
+    }
+
+
 ALGORITHMS = {
-    "prim": {"name": "Prim's MST", "category": "mst", "tier": 1, "cost": 5, "desc": "Minimum spanning tree"},
-    "kruskal": {"name": "Kruskal's MST", "category": "mst", "tier": 2, "cost": 8, "desc": "Union-find MST"},
-    "dijkstra": {"name": "Dijkstra's Shortest Path", "category": "pathfinding", "tier": 2, "cost": 8, "desc": "Shortest path"},
-    "edmonds_karp": {"name": "Edmonds-Karp Max Flow", "category": "flow", "tier": 3, "cost": 15, "desc": "Maximum flow"},
-    "leiden": {"name": "Leiden Community Detection", "category": "analysis", "tier": 4, "cost": 20, "desc": "Community detection fallback"},
-    "louvain": {"name": "Louvain Community Detection", "category": "analysis", "tier": 4, "cost": 20, "desc": "Community detection"},
-    "pagerank": {"name": "PageRank Centrality", "category": "analysis", "tier": 4, "cost": 18, "desc": "Central intersections"},
-    "k_median": {"name": "k-Median Facility", "category": "optimization", "tier": 5, "cost": 25, "desc": "Facility placement"},
-    "gwo": {"name": "Grey Wolf Optimizer", "category": "optimization", "tier": 3, "cost": 12, "desc": "Swarm placement"},
-    "hho": {"name": "Harris Hawks", "category": "optimization", "tier": 4, "cost": 15, "desc": "Swarm placement"},
-    "alo": {"name": "Ant Lion Optimizer", "category": "optimization", "tier": 3, "cost": 12, "desc": "Swarm placement"},
-    "woa": {"name": "Whale Optimizer", "category": "optimization", "tier": 3, "cost": 12, "desc": "Swarm placement"},
-    "wfo": {"name": "Whale Foraging Optimizer", "category": "optimization", "tier": 3, "cost": 12, "desc": "Swarm placement"},
-    "edf": {"name": "Earliest Deadline First", "category": "scheduling", "tier": 1, "cost": 5, "desc": "Schedule by deadline"},
-    "sjf": {"name": "Shortest Job First", "category": "scheduling", "tier": 2, "cost": 8, "desc": "Schedule by duration"},
-    "round_robin": {"name": "Round Robin", "category": "scheduling", "tier": 2, "cost": 6, "desc": "Fair time slicing"},
-    "rr": {"name": "Round Robin", "category": "scheduling", "tier": 2, "cost": 6, "desc": "Fair time slicing"},
-    "transformer": {"name": "Transformer Attention", "category": "ml", "tier": 3, "cost": 18, "desc": "Attention scores"},
-    "kan": {"name": "KAN Congestion", "category": "ml", "tier": 5, "cost": 25, "desc": "Congestion prediction"},
+    "prim": _algo("Prim's MST", "mst", 1, 5, "Greedily grows the cheapest utility backbone from a start junction.", "Lay minimum-cost power or fiber lines connecting all important hotspots.", "O(E log V)", "MST edges, total grid length, visited intersections"),
+    "kruskal": _algo("Kruskal's MST", "mst", 2, 8, "Sorts roads by cost and uses union-find to avoid cycles.", "Compare a global road-sorting plan against Prim's local frontier strategy.", "O(E log E)", "MST edges, rejected cycle edges, total grid length"),
+    "dijkstra": _algo("Dijkstra's Shortest Path", "pathfinding", 1, 8, "Finds the fastest route under current road and weather weights.", "Route emergency vehicles or commuters between selected hotspots.", "O((V + E) log V)", "Path, travel cost, relaxed roads"),
+    "contraction": _algo("Contraction Hierarchies", "pathfinding", 4, 22, "Preprocesses important shortcut roads for faster repeated routing.", "Show how map apps accelerate many shortest-path queries.", "Preprocess O(V log V + E), query near O(log V)", "Shortcut path, contracted nodes, query cost"),
+    "edmonds_karp": _algo("Edmonds-Karp Max Flow", "flow", 3, 15, "Uses BFS augmenting paths to maximize vehicles per hour.", "Measure throughput between two city districts and reveal bottleneck cuts.", "O(VE^2)", "Max flow, augmenting paths, min-cut roads"),
+    "leiden": _algo("Leiden Community Detection", "analysis", 4, 20, "Groups strongly connected intersections into stable districts.", "Discover natural zones for borough planning, policing, or bus depots.", "Near O(E) per pass", "District colors, community count"),
+    "louvain": _algo("Louvain Community Detection", "analysis", 4, 20, "Optimizes modularity to find graph communities.", "Compare districting quality with Leiden-style refinement.", "Near O(E) per pass", "District colors, modularity proxy"),
+    "pagerank": _algo("PageRank Centrality", "analysis", 3, 18, "Ranks intersections by incoming importance over repeated random walks.", "Find the most influential junctions for signal priority or inspections.", "O(kE)", "Top hub nodes, centrality scores"),
+    "k_median": _algo("k-Median Facility", "optimization", 5, 25, "Greedily places k services to reduce average citizen distance.", "Choose hospitals, shelters, or fire stations near demand hotspots.", "O(V^2 k)", "Facility nodes, average distance, coverage radius"),
+    "gwo": _algo("Grey Wolf Optimizer", "optimization", 3, 12, "Population search for k emergency-service locations.", "Place fire stations while minimizing worst response distance.", "O(I * P * V * k)", "Facility nodes, convergence fitness"),
+    "alo": _algo("Ant Lion Optimizer", "optimization", 3, 12, "Metaheuristic facility placement through elite-guided random walks.", "Compare stochastic facility planning against greedy k-median.", "O(I * P * V * k)", "Facility nodes, fitness trend"),
+    "hho": _algo("Harris Hawks Optimization", "optimization", 4, 15, "Exploration/exploitation search for emergency hubs.", "Stress-test facility placement under changing demand.", "O(I * P * V * k)", "Facility nodes, best fitness"),
+    "coa": _algo("Coati Optimization", "optimization", 5, 20, "Recent population optimizer for service hub placement.", "Advanced comparison for facility-location heuristics.", "O(I * P * V * k)", "Facility nodes, best fitness"),
+    "woa": _algo("Whale Optimizer", "optimization", 3, 12, "Optimizes traffic-signal green times using spiral search.", "Reduce queue delay at high-centrality signal junctions.", "O(I * P * S)", "Signal nodes, green times, delay"),
+    "run_optimizer": _algo("Runge-Kutta Optimizer", "optimization", 4, 16, "Uses RK-style slope updates over signal timing candidates.", "Compare numerical optimizer behavior for traffic-light tuning.", "O(I * P * S)", "Signal nodes, green times, delay"),
+    "ptbo": _algo("Painting Training Optimizer", "optimization", 5, 22, "Blends candidate signal schedules toward the best pattern.", "Advanced signal-timing optimizer for DAA comparison.", "O(I * P * S)", "Signal nodes, green times, delay"),
+    "mpa": _algo("Marine Predators Algorithm", "optimization", 4, 15, "Predator-prey search over traffic timing decisions.", "Compare another exploration/exploitation strategy visually.", "O(I * P * S)", "Signal nodes, green times, delay"),
+    "mfo": _algo("Moth-Flame Optimizer", "optimization", 3, 10, "Places antennas to maximize covered population.", "Plan cell towers or public Wi-Fi coverage.", "O(I * P * V)", "Tower nodes, covered population"),
+    "goa": _algo("Grasshopper Optimizer", "optimization", 4, 14, "Swarm search for wireless coverage placement.", "Compare coverage heuristics for telecom planning.", "O(I * P * V)", "Tower nodes, covered population"),
+    "ao": _algo("Aquila Optimizer", "optimization", 4, 15, "Dives toward high-coverage antenna positions.", "Advanced wireless coverage optimizer.", "O(I * P * V)", "Tower nodes, covered population"),
+    "do": _algo("Dandelion Optimizer", "optimization", 5, 18, "Wind-dispersal search over tower locations.", "Advanced wireless coverage optimizer.", "O(I * P * V)", "Tower nodes, covered population"),
+    "ssa": _algo("Salp Swarm", "optimization", 3, 12, "Selects road or utility edges to upgrade as a low-loss backbone.", "Balance utility upgrades under a limited budget.", "O(I * P)", "Upgraded edges, loss score"),
+    "sma": _algo("Slime Mould", "optimization", 4, 16, "Organic network optimizer for low-resistance road upgrades.", "Compare biologically inspired network construction.", "O(I * P)", "Upgraded edges, loss score"),
+    "aoa": _algo("Arithmetic Optimizer", "optimization", 3, 10, "Uses arithmetic operators to mutate utility upgrade candidates.", "Teach arithmetic metaheuristics on infrastructure upgrades.", "O(I * P)", "Upgraded edges, loss score"),
+    "gto": _algo("Gorilla Troops Optimizer", "optimization", 5, 20, "Leader-follower optimizer for power-line upgrades.", "Advanced utility-upgrade comparison.", "O(I * P)", "Upgraded edges, loss score"),
+    "edf": _algo("Earliest Deadline First", "scheduling", 1, 5, "Serves city jobs by deadline.", "Schedule ambulances, buses, or maintenance requests with urgency.", "O(J log J)", "Gantt chart, lateness"),
+    "sjf": _algo("Shortest Job First", "scheduling", 2, 8, "Runs shortest service jobs first.", "Compare throughput against fairness for municipal work orders.", "O(J log J)", "Gantt chart, waiting time"),
+    "fcfs": _algo("First-Come First-Served", "scheduling", 1, 3, "Processes jobs in arrival order.", "Baseline scheduler for fairness and simplicity.", "O(J)", "Gantt chart, waiting time"),
+    "round_robin": _algo("Round Robin", "scheduling", 2, 6, "Time-slices jobs so no district waits forever.", "Fair scheduling for service queues.", "O(J * slices)", "Gantt chart, response time"),
+    "transformer": _algo("Transformer Attention", "ml", 3, 18, "Computes pairwise attention over intersection features.", "Find global traffic hubs using population, degree, and coordinates.", "O(V^2 d)", "Attention hubs, scores"),
+    "kan": _algo("KAN Congestion", "ml", 5, 25, "Spline-style edge model predicts congestion pressure.", "Explain learned congestion inference without hiding the math.", "O(E * knots)", "Predicted congested edges"),
+    "swin": _algo("Swin Zoning", "ml", 4, 20, "Windowed spatial attention partitions the city into zones.", "Show local attention as a zoning/classification method.", "O(W^2 * windows)", "Zone colors, patch sizes"),
+    "diffusion": _algo("Diffusion Density", "ml", 5, 24, "Denoising process simulates staged city-density planning.", "Visualize generative planning over multiple timesteps.", "O(TV)", "Denoising steps, planned density"),
+    "raft_consensus": _algo("Raft Consensus", "systems", 3, 15, "Elects a leader among substations and replicates commands.", "Tie distributed systems to power-grid coordination.", "O(N * log entries)", "Leader node, replicated commands"),
+    "xgboost": _algo("XGBoost Split Finding", "systems", 4, 18, "Greedy feature splits partition intersections by gain.", "Teach decision-tree split selection for city zoning.", "O(dV log V)", "Split thresholds, zone colors"),
+    "count_sketch": _algo("Count Sketch Stream", "systems", 3, 10, "Approximates heavy traffic edges from a stream.", "Track busiest links without storing every vehicle event.", "O(d) per event", "Sketch size, highlighted stream edges"),
+    "rmi": _algo("Learned Index RMI", "systems", 4, 16, "Uses simple models to predict lookup position.", "Compare learned indexing with binary-search style lookup.", "O(1) average lookup", "Predicted positions, lookup error"),
 }
 
 
@@ -46,7 +77,7 @@ def _graph_from_data(graph_data: dict) -> nx.Graph:
     for edge in graph_data.get("edges", []):
         source = edge.get("source", edge.get("u"))
         target = edge.get("target", edge.get("v"))
-        if source and target:
+        if source is not None and target is not None:
             attrs = dict(edge)
             attrs["weight"] = edge.get("weighted", edge.get("weight", 1.0))
             attrs["capacity"] = edge.get("capacity_adjusted", edge.get("capacity", 1800))
@@ -55,6 +86,15 @@ def _graph_from_data(graph_data: dict) -> nx.Graph:
 
 
 async def dispatch_algorithm(algorithm: str, graph: nx.Graph, graph_data: dict, params: dict) -> dict:
+    algorithm = {
+        "rr": "round_robin",
+        "run": "run_optimizer",
+        "rko": "run_optimizer",
+        "vit": "swin",
+        "raft": "raft_consensus",
+        "learned_index": "rmi",
+        "shortest_path": "dijkstra",
+    }.get(algorithm, algorithm)
     try:
         if algorithm == "prim":
             tree = nx.minimum_spanning_tree(graph, algorithm="prim", weight="weight")
@@ -72,7 +112,7 @@ async def dispatch_algorithm(algorithm: str, graph: nx.Graph, graph_data: dict, 
             return _pagerank_result(graph)
         if algorithm == "k_median":
             return _facility_result(graph, int(params.get("k", 3)))
-        if algorithm in {"gwo", "hho", "alo", "woa", "wfo"}:
+        if algorithm in {"gwo", "hho", "alo", "woa", "run_optimizer", "ptbo", "mpa", "mfo", "goa", "ao", "do", "ssa", "sma", "aoa", "gto"}:
             return _swarm_result(graph, int(params.get("k", 3)))
         if algorithm in {"edf", "sjf", "round_robin", "rr"}:
             return _schedule_result(algorithm, params)
@@ -80,6 +120,10 @@ async def dispatch_algorithm(algorithm: str, graph: nx.Graph, graph_data: dict, 
             return _attention_result(graph)
         if algorithm == "kan":
             return _kan_result(graph)
+        if algorithm in {"swin", "xgboost"}:
+            return _community_result(graph)
+        if algorithm in {"diffusion", "raft_consensus", "count_sketch", "rmi"}:
+            return _pagerank_result(graph)
     except Exception as exc:
         return {"error": str(exc), "ops": 1, "theoretical_ops": 1, "fallback": True}
     return _pagerank_result(graph)
@@ -250,3 +294,47 @@ async def run_algorithm(payload: dict, user=Depends(get_current_user_optional)):
         except Exception:
             pass
     return result
+
+
+@router.post("/api/algorithms/compare")
+async def compare_algorithms(payload: dict):
+    algorithms = payload.get("algorithms") or []
+    city_id = payload.get("city_id", "bengaluru")
+    params = payload.get("params", {})
+    if not algorithms:
+        raise HTTPException(status_code=400, detail="Provide at least one algorithm to compare.")
+
+    graph_data = get_cached_city(city_id) or await load_city_graph(city_id)
+    if not graph_data:
+        raise HTTPException(status_code=404, detail=f"City '{city_id}' not loaded.")
+
+    graph = _graph_from_data(graph_data)
+    results = []
+    for algo in algorithms[:6]:
+        meta = ALGORITHMS.get(algo, {"name": algo, "complexity": "-", "use_case": "-"})
+        result = await dispatch_algorithm(algo, graph, graph_data, params)
+        ops = result.get("ops", result.get("op_count", 1))
+        theoretical = result.get("theoretical_ops", max(ops, 1))
+        ratio = ops / max(theoretical, 1)
+        efficiency = max(0, min(100, 100 * (1 - (ratio - 1) / 2)))
+        results.append({
+            "algorithm": algo,
+            "name": meta.get("name", algo),
+            "category": meta.get("category", "other"),
+            "complexity": meta.get("complexity", result.get("theoretical_complexity", "-")),
+            "use_case": meta.get("use_case", ""),
+            "output": meta.get("output", ""),
+            "ops": ops,
+            "theoretical_ops": theoretical,
+            "ratio": round(ratio, 3),
+            "efficiency_score": round(efficiency, 1),
+            "grade": "S" if efficiency >= 95 else "A" if efficiency >= 80 else "B" if efficiency >= 65 else "C" if efficiency >= 50 else "D",
+            "summary": {k: v for k, v in result.items() if k in {"distance", "dist", "max_flow", "avg_distance", "num_communities", "n_communities", "facility_nodes", "positions", "top_nodes"}},
+        })
+    return {
+        "city_id": city_id,
+        "node_count": graph_data.get("node_count", graph.number_of_nodes()),
+        "edge_count": graph_data.get("edge_count", graph.number_of_edges()),
+        "weather": graph_data.get("weather"),
+        "results": results,
+    }

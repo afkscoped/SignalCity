@@ -86,14 +86,11 @@ async def health():
 
 
 LEVEL_UNLOCKS = {
-    1: ["prim", "fcfs", "graham_scan", "first_fit", "dijkstra"],
+    1: ["prim", "dijkstra", "fcfs", "edf"],
     2: ["kruskal", "sjf", "round_robin"],
-    3: ["edmonds_karp", "edf", "gwo"],
-    4: ["leiden", "louvain", "alo", "woa"],
-    5: ["pagerank", "wfo", "hho"],
-    6: ["contraction", "ssa", "sma", "aoa"],
-    7: ["k_median", "coa", "goa", "ao", "do"],
-    8: ["transformer", "kan", "swin", "diffusion", "raft_consensus", "xgboost", "count_sketch", "rmi"]
+    3: ["edmonds_karp", "pagerank", "gwo", "alo", "woa", "mfo", "ssa", "aoa", "transformer", "raft_consensus", "count_sketch"],
+    4: ["leiden", "louvain", "hho", "run_optimizer", "mpa", "goa", "sma", "swin", "xgboost", "rmi"],
+    5: ["contraction", "k_median", "coa", "ptbo", "ao", "do", "gto", "kan", "diffusion"],
 }
 
 def _unlock_algos_for_level(user: dict, new_level: int, current_unlocked: list) -> list:
@@ -232,7 +229,7 @@ async def research_algorithm(user_id: str, body: dict):
     if not algo:
         raise HTTPException(400, "Algorithm name is required")
 
-    unlocked = list(user.get("unlocked_algos", ["prim", "fcfs", "graham_scan", "first_fit", "dijkstra"]))
+    unlocked = list(user.get("unlocked_algos", LEVEL_UNLOCKS[1]))
     if algo in unlocked:
         return {"status": "ok", "message": "Already unlocked", "profile": _serialize_user(user)}
 
@@ -399,8 +396,20 @@ def _get_algorithm_generator(algo_key: str, graph, params: dict):
     import algorithms.scheduling as scheduling
     import algorithms.geometry as geometry
     import algorithms.contraction as contraction
+    import algorithms.facility as facility
 
     key = algo_key.lower().strip()
+    aliases = {
+        "rr": "round_robin",
+        "run": "run_optimizer",
+        "rko": "run_optimizer",
+        "vit": "swin",
+        "raft": "raft_consensus",
+        "learned_index": "rmi",
+        "kan_network": "kan",
+        "shortest_path": "dijkstra",
+    }
+    key = aliases.get(key, key)
 
     source = params.get("source_node", params.get("start_node", params.get("source")))
     target = params.get("sink_node", params.get("end_node", params.get("target")))
@@ -458,6 +467,9 @@ def _get_algorithm_generator(algo_key: str, graph, params: dict):
         k_val = int(params.get("k", 3))
         max_iter = int(params.get("max_iter", 5))
         return metaheuristics.harris_hawks_optimization(graph, k=k_val, max_iter=max_iter)
+    elif key in {"k_median", "facility"}:
+        k_val = int(params.get("k", 3))
+        return facility.k_median_facility(graph, k=k_val, facility_type=params.get("facility_type", "hospital"))
     elif key in {"coa", "coati"}:
         k_val = int(params.get("k", 3))
         max_iter = int(params.get("max_iter", 5))
@@ -465,7 +477,7 @@ def _get_algorithm_generator(algo_key: str, graph, params: dict):
     elif key == "woa":
         max_iter = int(params.get("max_iter", 5))
         return metaheuristics.whale_optimization_algorithm(graph, max_iter=max_iter)
-    elif key in {"run_optimizer", "rko"}:
+    elif key == "run_optimizer":
         max_iter = int(params.get("max_iter", 5))
         return metaheuristics.runge_kutta_optimizer(graph, max_iter=max_iter)
     elif key in {"ptbo", "painting"}:
@@ -519,7 +531,7 @@ def _get_algorithm_generator(algo_key: str, graph, params: dict):
         return systems.count_sketch_streaming(graph)
     elif key == "rmi":
         return systems.learned_index_rmi(graph)
-    elif key in {"edf", "sjf", "fcfs", "round_robin", "rr"}:
+    elif key in {"edf", "sjf", "fcfs", "round_robin"}:
         n_jobs = int(params.get("n_jobs", params.get("k", 5)))
         jobs = scheduling.generate_citizen_jobs(n_jobs)
         if key == "edf":
