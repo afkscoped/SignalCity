@@ -1097,5 +1097,41 @@ a:hover { color: var(--gold-light); }
   box-shadow: var(--shadow-glow);
 }
 
+/* ─── Analytics Panel Styles ───────────────────────────────────────────── */
+#analytics-section {
+  display: flex;
+  flex-direction: column;
+}
+
+#analytics-section canvas {
+  border: 1px solid rgba(197, 160, 89, 0.15);
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
+  border-radius: var(--radius);
+}
+
+#comparison-table-container-1, #comparison-table-container-2 {
+  scrollbar-width: thin;
+  scrollbar-color: var(--gold-dim) var(--bg-deep);
+}
+
+#comparison-table-container-1::-webkit-scrollbar, #comparison-table-container-2::-webkit-scrollbar {
+  width: 4px;
+}
+
+#comparison-table-container-1::-webkit-scrollbar-thumb, #comparison-table-container-2::-webkit-scrollbar-thumb {
+  background: var(--gold-dim);
+}
+
+#comparison-table-container-1 tr:hover, #comparison-table-container-2 tr:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+#comparison-table-container-1 th, #comparison-table-container-2 th {
+  font-family: var(--font-title);
+  text-transform: uppercase;
+  font-size: 8px;
+  letter-spacing: 0.5px;
+}
+
 
 

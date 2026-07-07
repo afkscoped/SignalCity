@@ -159,6 +159,35 @@
         <div class="sidebar-title">🏆 Efficiency Report</div>
         <div id="report-card"></div>
       </div>
+      <!-- Analytics Panel -->
+      <div class="sidebar-section" id="analytics-section">
+        <div class="sidebar-title">📊 Algorithm Analytics</div>
+        <div class="tab-bar" style="margin-bottom:8px;">
+          <button class="tab-btn active" onclick="switchChartMode('ops', this)" style="font-size:10px;padding:4px 6px;">Ops</button>
+          <button class="tab-btn" onclick="switchChartMode('time', this)" style="font-size:10px;padding:4px 6px;">Time</button>
+          <button class="tab-btn" onclick="switchChartMode('efficiency', this)" style="font-size:10px;padding:4px 6px;">Score</button>
+        </div>
+        <div style="background:rgba(0,0,0,0.2);padding:6px;border-radius:4px;margin-bottom:8px;position:relative;">
+          <canvas id="analytics-canvas-1" width="240" height="120" style="width:100%;height:120px;display:block;"></canvas>
+        </div>
+        <div id="comparison-table-container-1" style="max-height:160px;overflow-y:auto;font-size:10px;">
+          <table style="width:100%;border-collapse:collapse;text-align:left;">
+            <thead>
+              <tr style="border-bottom:1px solid rgba(255,255,255,0.1);color:var(--text-muted);font-weight:bold;">
+                <th style="padding:4px 2px;">Algo</th>
+                <th style="padding:4px 2px;text-align:right;">Ops</th>
+                <th style="padding:4px 2px;text-align:right;">Time</th>
+                <th style="padding:4px 2px;text-align:right;">Score</th>
+              </tr>
+            </thead>
+            <tbody id="comparison-table-body-1">
+              <tr>
+                <td colspan="4" style="text-align:center;color:var(--text-dim);padding:8px 0;">No runs recorded yet.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -166,6 +195,158 @@
   <div class="toast-container" id="toast-container"></div>
 
   <script>
+    // ═══════════════════════════════════════════════════════════════════
+    // ACADEMY THEORY INSIGHTS
+    // ═══════════════════════════════════════════════════════════════════
+    const ALGO_ACADEMY_INSIGHTS = {
+      'prim': {
+        title: "Prim's Minimum Spanning Tree",
+        general: "Prim's algorithm starts from a single node and greedily grows a minimum spanning tree (MST) by repeatedly adding the cheapest edge that connects a node inside the tree to a node outside it, until all nodes are connected without cycles.",
+        usecase: "In city planning, Prim's is used to connect all utility structures (like power grids, fiber optic cables, water mains) with the minimum total length, saving massive construction and maintenance costs.",
+        colors: "🟢 Green circles represent nodes in the growing backbone. 🟢 Green lines show finalized connections. 🔵 Blue circles and lines represent candidate paths currently under consideration."
+      },
+      'kruskal': {
+        title: "Kruskal's Minimum Spanning Tree",
+        general: "Kruskal's algorithm finds a minimum spanning tree by sorting all edges from cheapest to most expensive, then greedily adding them one by one. It uses a Union-Find data structure to ensure no cycles are created, building the tree in disjoint segments that merge.",
+        usecase: "Useful when building highways or regional electricity grids in parallel where individual crews build local segments that eventually connect into one single unified network.",
+        colors: "🟢 Green lines are edges in the spanning tree. 🔴 Red lines show rejected edges that would have created redundant cycles. 🟡 Yellow edges show final spanning network."
+      },
+      'dijkstra': {
+        title: "Dijkstra's Shortest Path",
+        general: "Dijkstra's algorithm finds the shortest path from a starting node to all other nodes (or a target node) in a weighted graph. It maintains a priority queue of unvisited nodes, repeatedly relaxing edges to find shorter paths as it expands a frontier.",
+        usecase: "Used by GPS mapping services to find the fastest travel routes under current traffic and speed conditions, minimizing travel time and fuel consumption.",
+        colors: "🟢 Green circles indicate junctions where the shortest path is finalized. 🔵 Blue circles show the active search frontier (priority queue). 🟡 Yellow line shows the final shortest path."
+      },
+      'contraction': {
+        title: "Contraction Hierarchies",
+        general: "Contraction Hierarchies accelerates shortest path routing by preprocessing the graph. Nodes are ordered by importance and 'contracted' (removed) one by one, adding 'shortcut' edges to preserve shortest path distances. Querying uses bidirectional Dijkstra running only on shortcuts.",
+        usecase: "Used in navigation backends (like Google Maps or OSM) to respond to millions of routing requests instantly without scanning the entire road network of a continent.",
+        colors: "🟣 Purple lines indicate contracted highway shortcut paths. 🔵 Blue circles represent nodes scanned in the query. 🟡 Yellow line shows final optimal route."
+      },
+      'edmonds_karp': {
+        title: "Edmonds-Karp Max Flow",
+        general: "Edmonds-Karp implements the Ford-Fulkerson method to calculate maximum flow in a flow network. It repeatedly uses BFS to find the shortest augmenting path (in terms of number of edges) and pushes flow through it until no more paths exist.",
+        usecase: "Used to determine the maximum traffic capacity of a highway network, or water capacity in a municipal sewer system, highlighting bottleneck points where expansions are needed.",
+        colors: "🟠 Orange/Yellow lines show roads with active flow. 🔵 Blue/Red highlights indicate bottleneck cuts (min-cut) where capacity limits the overall flow."
+      },
+      'leiden': {
+        title: "Leiden Community Detection",
+        general: "The Leiden algorithm partitions a network into communities (districts) by optimizing modularity. It improves upon the older Louvain algorithm by guaranteeing that communities are well-connected and avoiding poorly formed clusters.",
+        usecase: "Used for urban zoning, defining electoral district boundaries, planning bus routes, or dividing cities into administrative police precincts based on spatial connectivity.",
+        colors: "🎨 Each color represents a different administrative district zone created by the clustering algorithm."
+      },
+      'louvain': {
+        title: "Louvain Community Detection",
+        general: "Louvain is a fast modularity optimization algorithm that groups nodes into hierarchical communities. It iteratively merges nodes into local clusters to maximize connectivity density inside groups vs outside.",
+        usecase: "Analyzing social networks, commuter patterns, or neighborhood boundaries to group areas of high interaction.",
+        colors: "🎨 Color-coded overlays indicate municipal communities detected based on node-edge densities."
+      },
+      'pagerank': {
+        title: "PageRank Centrality",
+        general: "PageRank measures the relative importance of nodes in a graph. It simulates a 'random surfer' traversing edges, assigning higher scores to nodes that are linked to by other important nodes. It converges over iterative matrix multiplications.",
+        usecase: "Used to identify the most critical traffic junctions in a city to optimize traffic signal priorities or identify commercial hotspots for business placements.",
+        colors: "🟡 Yellow circles identify top centrality hubs. Circle size indicates relative PageRank score."
+      },
+      'k_median': {
+        title: "k-Median Facility Location",
+        general: "k-Median selects k facility locations to minimize the average distance from all clients to their nearest facility. It is a classic NP-Hard optimization problem solved using greedy or clustering heuristics.",
+        usecase: "Used to place schools, libraries, or community centers such that the average walk/commute time for all citizens in the city is minimized.",
+        colors: "🟡 Yellow stars/circles represent placed facility centers. 🔵 Blue lines link citizens to their assigned nearest facility."
+      },
+      'gwo': {
+        title: "Grey Wolf Optimizer (GWO)",
+        general: "GWO is a nature-inspired metaheuristic that mimics the social hierarchy and hunting mechanism of grey wolves. The search agents update positions relative to the best three candidates (Alpha, Beta, Delta) to converge on global optima.",
+        usecase: "Used for emergency facility placement (like fire stations or ambulance depots) to minimize the maximum possible response distance to any corner of the city.",
+        colors: "🐺 Wolf icons or circles show candidates hunting in the space. 🟡 Yellow stroke shows the final best alpha wolf positions."
+      },
+      'alo': {
+        title: "Ant Lion Optimizer (ALO)",
+        general: "ALO is a metaheuristic that models the hunting behavior of antlions. It simulates ants making random walks in traps, and antlions sliding them down to the center. It uses elite random walks to maintain diversity and find global optima.",
+        usecase: "Optimizes municipal facility placements or school zoning in complex urban layouts where traditional algorithms get stuck in local optima.",
+        colors: "🐜 Small blue dots show ant search agents. 🦁 Yellow markers show antlion traps and the elite best layout."
+      },
+      'hho': {
+        title: "Harris Hawks Optimization (HHO)",
+        general: "HHO is a population-based optimizer based on the cooperative hunting behaviors of Harris's hawks. It shifts dynamically from exploration (soaring) to exploitation (soft/hard besieges) based on the energy level of the target prey.",
+        usecase: "Locating optimal transit hubs, parking garages, or recycling drop-offs under varying density constraints.",
+        colors: "🦅 Hawks markers representing search coordinates. 🟡 Yellow circle indicates optimal placement."
+      },
+      'coa': {
+        title: "Coati Optimization Algorithm",
+        general: "COA is a metaheuristic inspired by coatis attacking iguanas in trees and escaping predators on the ground. It utilizes exploration loops to cover large search spaces and exploitation loops to refine layouts.",
+        usecase: "Evaluating candidate sites for utility infrastructure like electrical substations.",
+        colors: "🦝 Candidate search agents updating coordinates. 🟡 Yellow highlights represent the optimal sites."
+      },
+      'mfo': {
+        title: "Moth-Flame Optimization (MFO)",
+        general: "MFO simulates the navigation of moths towards flames (light sources) using spiral models. Moths update positions around multiple flames, with the number of flames dynamically decreasing to focus the search.",
+        usecase: "Determining cellular antenna placements (5G towers) or municipal public Wi-Fi locations to cover the maximum possible population weight with minimal overlap.",
+        colors: "🦋 Moth points flying in spirals around flames. 🟡 Yellow circles represent optimal antenna locations."
+      },
+      'goa': {
+        title: "Grasshopper Optimization Algorithm (GOA)",
+        general: "GOA mimics the swarming behavior of grasshoppers. It models the forces of attraction (to group up) and repulsion (to explore new territory) between grasshoppers to search high-dimensional spaces.",
+        usecase: "Optimizing wireless sensor placement, sewage drainage lines, or utility networks.",
+        colors: "🦗 Grasshopper swarm positions. 🟡 Yellow marks highlight optimal grid positions."
+      },
+      'ao': {
+        title: "Aquila Optimizer (AO)",
+        general: "AO models the four hunting behaviors of the Aquila eagle: high glide to explore, contour flight for short-range search, low flight for land search, and diving to catch prey.",
+        usecase: "Planning aerial logistics, drone charging pads, or high-altitude wireless coverage grids.",
+        colors: "🦅 Eagle coordinate tracking. 🟡 Yellow circles identify final optimal pad coordinates."
+      },
+      'do': {
+        title: "Dandelion Optimizer (DO)",
+        general: "DO is inspired by dandelion seeds floating in wind currents. Seeds fly in spirals (rising wind), disperse locally (normal wind), and settle to germinate (descending wind).",
+        usecase: "Sowing decentralized infrastructure nodes, like local solar panels or trash collection bins.",
+        colors: "🌾 Dandelion seed search vectors. 🟡 Yellow circles show final optimal distribution."
+      },
+      'edf': {
+        title: "Earliest Deadline First (EDF) Scheduling",
+        general: "EDF is a dynamic scheduling algorithm that places tasks in a priority queue sorted by their deadlines. The task with the nearest deadline is processed first. It is optimal for real-time systems.",
+        usecase: "Scheduling time-critical municipal services, such as emergency vehicle routing, water leak repairs, or power line failures.",
+        colors: "📅 Gantt chart bars show start/finish times. Red markers indicate lateness or deadline violations."
+      },
+      'sjf': {
+        title: "Shortest Job First (SJF) Scheduling",
+        general: "SJF schedules tasks by processing the job with the shortest execution duration first. It minimizes the average waiting time for all tasks, though it can starve longer tasks.",
+        usecase: "Scheduling routine city maintenance work orders (potholes, garbage pickup, tree trimming) to maximize the speed at which citizens' requests are cleared.",
+        colors: "📅 Gantt chart bars ordered by duration from shortest to longest."
+      },
+      'fcfs': {
+        title: "First-Come First-Served (FCFS) Scheduling",
+        general: "FCFS processes jobs in the exact order they arrive in the queue. It is the simplest scheduling algorithm, ensuring complete fairness (no starvation) but often resulting in long average wait times.",
+        usecase: "Managing queues at customer service desks, vehicle licensing centers, or permit approvals.",
+        colors: "📅 Gantt chart bars representing arrival order sequence."
+      },
+      'round_robin': {
+        title: "Round Robin (RR) Scheduling",
+        general: "Round Robin assigns a fixed time unit (quantum) to each task in the queue, rotating through all tasks. If a task isn't completed in its quantum, it goes to the back of the queue. This prevents any single job from starving.",
+        usecase: "Scheduling compute tasks in smart city IoT hubs or routing public buses in a cycle so no district is left waiting too long.",
+        colors: "📅 Gantt chart showing interleaved color segments corresponding to task quantums."
+      }
+    };
+
+    function openAcademyInsights(algoKey) {
+      const info = ALGO_ACADEMY_INSIGHTS[algoKey] || {
+        title: algoKey.toUpperCase(),
+        general: "Theory explanation for this algorithm.",
+        usecase: "Use case in city planning and network optimization.",
+        colors: "Visualization highlights represent active steps."
+      };
+      
+      document.getElementById('insights-title').textContent = `🎓 Academy: ${info.title}`;
+      document.getElementById('insights-general').textContent = info.general;
+      document.getElementById('insights-usecase').textContent = info.usecase;
+      document.getElementById('insights-colors').textContent = info.colors;
+      
+      document.getElementById('academy-insights-modal').style.display = 'flex';
+    }
+
+    function closeAcademyInsights() {
+      document.getElementById('academy-insights-modal').style.display = 'none';
+    }
+
     // ═══════════════════════════════════════════════════════════════════
     // STATE
     // ═══════════════════════════════════════════════════════════════════
@@ -188,6 +369,7 @@
       algos: {},
       quests: [],
       activeQuestId: null,
+      runHistory: JSON.parse(localStorage.getItem('sc_run_history') || '[]'),
     };
 
     // Initialize profile
@@ -280,6 +462,9 @@
         state.quests = await res.json();
         renderMissions();
       } catch (e) { console.error('Failed to load quests', e); }
+
+      renderAnalyticsChart();
+      renderComparisonTable();
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -498,6 +683,21 @@
           detail.style.cssText = 'font-size:10px;color:var(--text-dim);line-height:1.25;margin-top:4px;width:100%;';
           detail.innerHTML = `${meta.use_case || meta.desc || ''}<br><span style="color:var(--gold);">Complexity:</span> ${meta.complexity || '-'}`;
           item.appendChild(detail);
+        }
+        if (!item.querySelector('.theory-btn-container') && !item.classList.contains('locked')) {
+          const btnContainer = document.createElement('div');
+          btnContainer.className = 'theory-btn-container';
+          btnContainer.style.cssText = 'margin-top:6px; display:flex; justify-content:flex-end; width:100%; border-top:1px solid rgba(255,255,255,0.03); padding-top:4px;';
+          const btn = document.createElement('button');
+          btn.className = 'civ-btn civ-btn-sm';
+          btn.style.cssText = 'padding:1px 4px; font-size:8px; text-transform:none;';
+          btn.textContent = '❓ Theory';
+          btn.onclick = (e) => {
+            e.stopPropagation();
+            openAcademyInsights(id);
+          };
+          btnContainer.appendChild(btn);
+          item.appendChild(btnContainer);
         }
       });
     }
@@ -742,13 +942,17 @@
     // STATS & REPORT
     // ═══════════════════════════════════════════════════════════════════
     function updateStats(stats) {
+      const algoName = state.selectedAlgo;
+      const complexityStr = (state.algos && algoName && state.algos[algoName] && state.algos[algoName].complexity) || '-';
       const el = document.getElementById('algo-stats');
       el.innerHTML = `
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
-          <div><span class="text-muted text-xs">Algorithm</span><br><strong>${stats.algo_name || '-'}</strong></div>
-          <div><span class="text-muted text-xs">Wall Time</span><br><strong>${stats.wall_ms || 0}ms</strong></div>
-          <div><span class="text-muted text-xs">Operations</span><br><strong>${stats.ops_so_far || 0}</strong></div>
-          <div><span class="text-muted text-xs">Nodes</span><br><strong>${stats.theoretical_n || 0}</strong></div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;">
+          <div><span class="text-muted text-xs">Algorithm</span><br><strong style="font-size:11px;">${stats.algo_name || '-'}</strong></div>
+          <div><span class="text-muted text-xs">Wall Time</span><br><strong style="font-size:11px;">${stats.wall_ms || 0}ms</strong></div>
+          <div><span class="text-muted text-xs">Complexity</span><br><strong style="font-size:11px;color:var(--gold);">${complexityStr}</strong></div>
+          <div><span class="text-muted text-xs">Operations</span><br><strong style="font-size:11px;">${stats.ops_so_far || 0}</strong></div>
+          <div><span class="text-muted text-xs">Nodes (V)</span><br><strong style="font-size:11px;">${stats.theoretical_n || 0}</strong></div>
+          <div><span class="text-muted text-xs">Edges (E)</span><br><strong style="font-size:11px;">${(state.graphData && state.graphData.edges) ? state.graphData.edges.length : '-'}</strong></div>
         </div>`;
 
       document.getElementById('bigo-ops').textContent = stats.ops_so_far || 0;
@@ -831,8 +1035,19 @@
         `;
       }
 
+      const wallMs = parseFloat(grade.wall_ms || (summary && summary.total_wall_ms) || 0);
+      const complexityStr = (state.algos[algoName] && state.algos[algoName].complexity) || 'O(...)';
+
+      const insights = ALGO_ACADEMY_INSIGHTS[algoName] || { usecase: "City infrastructure and network optimization." };
+      const whyRequiredHtml = `
+        <div style="font-size:10.5px; margin-top:8px; padding:6px; background:rgba(197, 160, 89, 0.05); border-left:2px solid var(--gold); border-radius:2px; text-align:left;">
+          <span style="font-family:var(--font-title); color:var(--gold-light); font-weight:bold; font-size:9.5px;">WHY IS THIS REQUIRED?</span><br>
+          <span style="color:var(--text-dim);">${insights.usecase}</span>
+        </div>
+      `;
+
       document.getElementById('report-card').innerHTML = `
-        <div class="report-card animate-slide-up">
+        <div class="report-card animate-slide-up" style="background: rgba(20, 24, 34, 0.95); border: 1.5px solid var(--gold); border-radius: 6px; padding: 12px; margin-top: 8px;">
           <div class="report-card-header">
             <div class="grade-badge grade-${grade.grade}">${grade.grade}</div>
             <div>
@@ -840,14 +1055,17 @@
               <div class="algo-sub">${grade.comparison_text || ''}</div>
             </div>
           </div>
-          <div class="report-stats">
-            <div class="report-stat"><div class="label">Score</div><div class="value">${grade.efficiency_score}%</div></div>
-            <div class="report-stat"><div class="label">Operations</div><div class="value">${grade.actual_ops}</div></div>
-            <div class="report-stat"><div class="label">Theoretical</div><div class="value">${grade.theoretical_ops}</div></div>
-            <div class="report-stat"><div class="label">Ratio</div><div class="value">${grade.efficiency_ratio}x</div></div>
+          <div class="report-stats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px 4px;text-align:center;background:rgba(255,255,255,0.02);padding:6px;border-radius:4px;margin-bottom:6px;">
+            <div class="report-stat"><div class="label" style="font-size:8px;color:var(--text-muted);">Score</div><div class="value" style="font-weight:bold;font-size:11px;color:var(--teal);">${grade.efficiency_score}%</div></div>
+            <div class="report-stat"><div class="label" style="font-size:8px;color:var(--text-muted);">Time Taken</div><div class="value" style="font-weight:bold;font-size:11px;color:#fff;">${wallMs.toFixed(1)}ms</div></div>
+            <div class="report-stat"><div class="label" style="font-size:8px;color:var(--text-muted);">Complexity</div><div class="value" style="font-weight:bold;font-size:10px;color:var(--gold);">${complexityStr}</div></div>
+            <div class="report-stat" title="How many junctions or roads were scanned during execution."><div class="label" style="font-size:8px;color:var(--text-muted);">Ops 💡</div><div class="value" style="font-weight:bold;font-size:11px;color:#fff;">${grade.actual_ops}</div></div>
+            <div class="report-stat" title="The mathematical worst-case operations calculated based on graph size."><div class="label" style="font-size:8px;color:var(--text-muted);">Theo Ops</div><div class="value" style="font-weight:bold;font-size:11px;color:#fff;">${grade.theoretical_ops}</div></div>
+            <div class="report-stat" title="Actual Ops divided by Theoretical Ops. A lower ratio (close to 1.0x) is better."><div class="label" style="font-size:8px;color:var(--text-muted);">Ratio 💡</div><div class="value" style="font-weight:bold;font-size:11px;color:var(--gold);">${grade.efficiency_ratio}x</div></div>
           </div>
           ${algoSpecificHtml}
-          <div style="display:flex;gap:16px;margin-bottom:12px;margin-top:12px;font-size:12px;font-weight:bold;">
+          ${whyRequiredHtml}
+          <div style="display:flex;gap:16px;margin-bottom:12px;margin-top:12px;font-size:12px;font-weight:bold;justify-content:center;">
             <span style="color:var(--teal);">+${grade.xp_earned} XP</span>
             <span style="color:var(--gold);">+${grade.coins_earned} 🪙</span>
             <span style="color:var(--purple);">+${grade.rp_earned} 🧪</span>
@@ -858,6 +1076,8 @@
 
       if (grade.grade === 'S') showToast('🌟 Perfect S-Grade! Outstanding!', 'achievement');
       else if (grade.grade === 'A') showToast('Excellent A-Grade!', 'success');
+      
+      saveRunHistory(algoName, grade, summary);
     }
 
     async function compareSelectedAlgorithms() {
@@ -1015,6 +1235,205 @@
       state.activeQuestId = questId;
       showToast(`🎯 Active Mission Set: ${quest.title}! Run ${state.algos[reqAlgo]?.name || reqAlgo} to complete!`, 'success');
       renderMissions();
+    }
+
+    let currentChartMode = 'ops';
+
+    function switchChartMode(mode, btn) {
+      currentChartMode = mode;
+      const section = document.getElementById('analytics-section');
+      if (section) {
+        section.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        if (btn) btn.classList.add('active');
+      }
+      renderAnalyticsChart();
+    }
+
+    function saveRunHistory(algoName, grade, summary) {
+      const wallMs = parseFloat(grade.wall_ms || (summary && summary.total_wall_ms) || 0);
+      const name = (state.algos && state.algos[algoName]) ? state.algos[algoName].name : algoName.toUpperCase();
+      
+      const run = {
+        algorithm: algoName,
+        name: name,
+        wallMs: wallMs,
+        ops: parseInt(grade.actual_ops || 0),
+        theoreticalOps: parseInt(grade.theoretical_ops || 0),
+        efficiency: parseFloat(grade.efficiency_score || 0),
+        grade: grade.grade || 'N/A',
+        timestamp: Date.now()
+      };
+      
+      if (!state.runHistory) state.runHistory = [];
+      state.runHistory.push(run);
+      if (state.runHistory.length > 15) {
+        state.runHistory.shift();
+      }
+      localStorage.setItem('sc_run_history', JSON.stringify(state.runHistory));
+      
+      renderAnalyticsChart();
+      renderComparisonTable();
+    }
+
+    function renderAnalyticsChart() {
+      const canvas = document.getElementById('analytics-canvas-1');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      
+      const width = canvas.width;
+      const height = canvas.height;
+      
+      ctx.clearRect(0, 0, width, height);
+      ctx.fillStyle = 'rgba(12, 14, 20, 0.6)';
+      ctx.fillRect(0, 0, width, height);
+      
+      const runs = state.runHistory || [];
+      if (runs.length === 0) {
+        ctx.fillStyle = '#8a95a5';
+        ctx.font = '10px Outfit, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('No algorithm runs recorded yet.', width / 2, height / 2);
+        return;
+      }
+      
+      const displayRuns = runs.slice(-7);
+      
+      let values = [];
+      let maxVal = 0;
+      let labelSuffix = '';
+      
+      if (currentChartMode === 'ops') {
+        values = displayRuns.map(r => r.ops);
+        maxVal = Math.max(...values, 1);
+        labelSuffix = '';
+      } else if (currentChartMode === 'time') {
+        values = displayRuns.map(r => r.wallMs);
+        maxVal = Math.max(...values, 1);
+        labelSuffix = 'ms';
+      } else if (currentChartMode === 'efficiency') {
+        values = displayRuns.map(r => r.efficiency);
+        maxVal = 100;
+        labelSuffix = '%';
+      }
+      
+      const paddingLeft = 32;
+      const paddingRight = 10;
+      const paddingTop = 15;
+      const paddingBottom = 20;
+      
+      const chartWidth = width - paddingLeft - paddingRight;
+      const chartHeight = height - paddingTop - paddingBottom;
+      
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+      ctx.lineWidth = 1;
+      for (let i = 0; i <= 4; i++) {
+        const y = paddingTop + (chartHeight * i / 4);
+        ctx.beginPath();
+        ctx.moveTo(paddingLeft, y);
+        ctx.lineTo(width - paddingRight, y);
+        ctx.stroke();
+        
+        ctx.fillStyle = '#5A6474';
+        ctx.font = '8px Outfit, sans-serif';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        const val = maxVal - (maxVal * i / 4);
+        let formattedVal = Math.round(val);
+        if (formattedVal >= 1000) {
+          formattedVal = (formattedVal / 1000).toFixed(1) + 'k';
+        }
+        ctx.fillText(formattedVal, paddingLeft - 4, y);
+      }
+      
+      const numBars = displayRuns.length;
+      const barSpacing = 6;
+      const totalSpacing = barSpacing * (numBars + 1);
+      const barWidth = (chartWidth - totalSpacing) / numBars;
+      
+      for (let i = 0; i < numBars; i++) {
+        const run = displayRuns[i];
+        const val = values[i];
+        const barHeight = (val / maxVal) * chartHeight;
+        const x = paddingLeft + barSpacing + i * (barWidth + barSpacing);
+        const y = height - paddingBottom - barHeight;
+        
+        const grad = ctx.createLinearGradient(x, y, x, height - paddingBottom);
+        if (run.grade === 'S') {
+          grad.addColorStop(0, '#FFD700');
+          grad.addColorStop(1, '#B8860B');
+        } else if (run.grade === 'A') {
+          grad.addColorStop(0, '#1D9E75');
+          grad.addColorStop(1, '#0C6E4E');
+        } else if (run.grade === 'B') {
+          grad.addColorStop(0, '#378ADD');
+          grad.addColorStop(1, '#1E5A96');
+        } else {
+          grad.addColorStop(0, '#8B5CF6');
+          grad.addColorStop(1, '#5B2CBE');
+        }
+        
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        if (ctx.roundRect) {
+          ctx.roundRect(x, y, barWidth, barHeight, [2, 2, 0, 0]);
+        } else {
+          ctx.rect(x, y, barWidth, barHeight);
+        }
+        ctx.fill();
+        
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+        ctx.lineWidth = 0.5;
+        ctx.stroke();
+        
+        ctx.fillStyle = '#fff';
+        ctx.font = '7px monospace';
+        ctx.textAlign = 'center';
+        let displayVal = Math.round(val);
+        if (displayVal >= 1000) {
+          displayVal = (displayVal / 1000).toFixed(1) + 'k';
+        }
+        ctx.fillText(displayVal + labelSuffix, x + barWidth / 2, Math.max(y - 4, paddingTop + 2));
+        
+        let abbrName = run.algorithm.substring(0, 4).toUpperCase();
+        ctx.fillStyle = '#8a95a5';
+        ctx.font = '8px Outfit, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(abbrName, x + barWidth / 2, height - paddingBottom + 12);
+      }
+    }
+
+    function renderComparisonTable() {
+      const tbody = document.getElementById('comparison-table-body-1');
+      if (!tbody) return;
+      
+      const runs = state.runHistory || [];
+      if (runs.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="4" style="text-align:center;color:var(--text-dim);padding:8px 0;">No runs recorded yet.</td>
+          </tr>
+        `;
+        return;
+      }
+      
+      const reversedRuns = [...runs].reverse();
+      tbody.innerHTML = reversedRuns.map(r => {
+        let gradeColor = 'var(--text-dim)';
+        if (r.grade === 'S') gradeColor = 'var(--gold)';
+        else if (r.grade === 'A') gradeColor = 'var(--teal)';
+        else if (r.grade === 'B') gradeColor = '#378ADD';
+        
+        return `
+          <tr style="border-bottom:1px solid rgba(255,255,255,0.03);">
+            <td style="padding:4px 2px;color:var(--gold-light);font-weight:bold;">${r.name} <span style="font-size:7px;color:${gradeColor};vertical-align:super;">[${r.grade}]</span></td>
+            <td style="padding:4px 2px;text-align:right;font-family:monospace;">${r.ops}</td>
+            <td style="padding:4px 2px;text-align:right;font-family:monospace;">${r.wallMs.toFixed(1)}ms</td>
+            <td style="padding:4px 2px;text-align:right;font-family:monospace;color:var(--teal);">${r.efficiency}%</td>
+          </tr>
+        `;
+      }).join('');
     }
 
     function unlockAlgosForLevel(level) {
@@ -1769,6 +2188,30 @@
         Spend accumulated 🧪 Research Points (RP) to unlock advanced algorithms. You gain RP by completing turns and running highly efficient algorithms.
       </p>
       <div id="tech-tree-nodes" style="display:flex; flex-direction:column; gap:8px;"></div>
+    </div>
+  </div>
+
+  <!-- ═══ Academy Insights Modal ═══ -->
+  <div class="modal-backdrop" id="academy-insights-modal" style="display:none; justify-content:center; align-items:center; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.75); z-index:10000;">
+    <div class="civ-panel modal-content" style="max-width: 500px; width: 90%; max-height: 85vh; overflow-y: auto; padding: 24px; position:relative;">
+      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--gold); padding-bottom:12px; margin-bottom:16px;">
+        <h2 id="insights-title" style="font-family:var(--font-title); color:var(--gold); margin:0; font-size:16px; letter-spacing:1px;">🎓 Algorithm Academy Insights</h2>
+        <button class="civ-btn civ-btn-sm" onclick="closeAcademyInsights()">✕ Close</button>
+      </div>
+      <div class="insights-body" style="font-size:13px; line-height:1.5; color:var(--text-primary);">
+        <div style="margin-bottom:16px; text-align:left;">
+          <h4 style="color:var(--gold-light); margin-bottom:4px; font-family:var(--font-title); font-size:11px; letter-spacing:0.5px;">GENERAL ALGORITHM THEORY</h4>
+          <p id="insights-general" style="color:var(--text-dim); font-size:11.5px;"></p>
+        </div>
+        <div style="margin-bottom:16px; text-align:left;">
+          <h4 style="color:var(--gold-light); margin-bottom:4px; font-family:var(--font-title); font-size:11px; letter-spacing:0.5px;">OSM MAP USE CASE</h4>
+          <p id="insights-usecase" style="color:var(--text-dim); font-size:11.5px;"></p>
+        </div>
+        <div style="margin-bottom:16px; text-align:left;">
+          <h4 style="color:var(--gold-light); margin-bottom:4px; font-family:var(--font-title); font-size:11px; letter-spacing:0.5px;">VISUALIZATION COLOR KEY</h4>
+          <p id="insights-colors" style="color:var(--text-dim); font-size:11.5px;"></p>
+        </div>
+      </div>
     </div>
   </div>
 
