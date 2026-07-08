@@ -479,6 +479,16 @@ def _get_algorithm_generator(algo_key: str, graph, params: dict, graph_data: dic
         return mst.kruskal_mst(graph)
     elif key in {"dijkstra", "shortest_path"}:
         return dijkstra_mod.dijkstra(graph, source=source, target=target)
+    elif key == "flooding_astar":
+        import copy
+        g_copy = copy.deepcopy(graph)
+        flooded = params.get("flooded_nodes", [])
+        for u in g_copy.adj:
+            for edge in g_copy.adj[u]:
+                v = edge["to"]
+                if u in flooded or v in flooded:
+                    edge["weight"] = edge["weight"] * 1000.0
+        return dijkstra_mod.dijkstra(g_copy, source=source, target=target)
     elif key in {"contraction", "contraction_hierarchies"}:
         return contraction.contraction_hierarchies(graph, source=source, target=target)
     elif key in {"edmonds_karp", "flow"}:

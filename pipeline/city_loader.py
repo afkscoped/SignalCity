@@ -388,9 +388,6 @@ async def load_city_graph(city_key: str) -> dict[str, Any]:
         try:
             with open(json_cache_path, "r", encoding="utf-8") as f:
                 cached = _attach_hotspots(json.load(f))
-            bundled = _load_bundled_fallback(city_key)
-            if bundled and cached.get("node_count", 0) < bundled.get("node_count", 0):
-                return bundled
             return cached
         except Exception as exc:
             logger.warning("JSON cache corrupt for %s: %s", city_key, exc)
