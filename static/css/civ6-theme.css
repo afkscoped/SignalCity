@@ -598,7 +598,9 @@ a:hover { color: var(--gold-light); }
 
 /* ─── Sidebar Layout ───────────────────────────────────────────────────── */
 .sidebar {
-  width: 320px;
+  width: 360px;
+  min-width: 340px;
+  max-width: 600px;
   background: var(--bg-panel);
   border-right: 2px solid var(--gold);
   display: flex;

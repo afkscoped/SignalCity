@@ -270,3 +270,38 @@ async def evaluate_city(payload: dict):
         "explanation": "Evaluated city based on 15-Minute City metrics. Lower Gini means more equitable access."
     }
 
+
+@router.get("/wards")
+async def get_wards():
+    """Retrieve list of BBMP wards and their dynamic target metrics for Ward Challenge mode."""
+    from data.civic.loader import get_ward_boundaries
+    try:
+        boundaries = get_ward_boundaries()
+        wards = []
+        for feature in boundaries.get("features", []):
+            props = feature.get("properties", {})
+            name = props.get("KGISWardName", "Unknown Ward")
+            code = props.get("KGISWardCode", str(props.get("KGISWardID", "0")))
+            pop = props.get("population", 50000)
+            
+            # Dynamic targets based on real ward population
+            targets = {
+                "hospital": max(1, pop // 30000),
+                "school": max(1, pop // 20000),
+                "power_plant": 1,
+                "water_tower": max(1, pop // 40000),
+                "robustness": 75.0,
+                "gini": 0.25
+            }
+            
+            wards.append({
+                "name": name,
+                "code": code,
+                "population": pop,
+                "targets": targets
+            })
+        return {"status": "ok", "wards": sorted(wards, key=lambda w: w["name"])}
+    except Exception as e:
+        logger.error(f"Error loading wards for game mode: {e}")
+        return {"status": "error", "message": str(e)}
+

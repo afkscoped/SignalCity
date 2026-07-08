@@ -55,7 +55,7 @@
         <div class="sidebar-title">🛣️ Infrastructure</div>
         <div id="infra-menu"></div>
       </div>
-      <div class="sidebar-section">
+      <div class="sidebar-section" style="max-height: 380px; overflow-y: auto;">
         <div class="sidebar-title" style="display:flex; justify-content:space-between; align-items:center;">
           <span>⚡ Auto-Build (Algorithms)</span>
           <button class="civ-btn civ-btn-sm" style="font-size:9px; padding:2px 6px; text-transform:none; border-color:var(--gold); color:var(--gold);" onclick="openAlgoDirectory()">📚 Directory</button>
@@ -77,6 +77,34 @@
         </div>
         <div id="missions-list" style="flex:1; overflow-y:auto; border:1px solid rgba(197,160,89,0.15); border-radius:4px; padding:6px; background:rgba(0,0,0,0.25);"></div>
       </div>
+      <!-- Ward Challenge Mode Section -->
+      <div class="sidebar-section" style="max-height: 380px; overflow-y: auto;">
+        <div class="sidebar-title" style="display:flex; justify-content:space-between; align-items:center;">
+          <span>🏙️ Ward Challenge</span>
+          <span style="font-size:9px; color:var(--teal);">Real BBMP Stats</span>
+        </div>
+        <select class="select" id="ward-challenge-selector" style="font-size:11px; padding:4px; width:100%; background:rgba(255,255,255,0.04); color:#e2e8f0; border:1px solid rgba(197,160,89,0.25);" onchange="selectWardChallenge(this.value)">
+          <option value="">Select a BBMP Ward...</option>
+        </select>
+        <div id="ward-challenge-panel" style="font-size:10px; color:var(--text-dim); margin-top:8px; display:none; background:rgba(0,0,0,0.25); border:1px solid rgba(197,160,89,0.15); border-radius:4px; padding:8px; line-height:1.35;">
+          <div style="font-weight:bold; color:var(--gold); font-size:11px; margin-bottom:4px;" id="ward-name-title">Kempegowda Ward</div>
+          <div style="display:grid; grid-template-columns:1.2fr .8fr; gap:4px; margin-bottom:4px;">
+            <span>Population:</span><span id="ward-pop-val" style="color:var(--text-light); font-family:var(--font-mono); font-weight:bold;">0</span>
+          </div>
+          <div style="font-weight:bold; color:var(--gold-light); margin-top:6px; margin-bottom:2px;">Targets vs Current:</div>
+          <div style="display:grid; grid-template-columns:1.4fr .6fr; gap:4px;">
+            <span>🏥 Hospitals:</span><span id="ward-hosp-val" style="font-family:var(--font-mono); font-weight:bold; color:var(--text-light);">0 / 0</span>
+            <span>🏫 Schools:</span><span id="ward-school-val" style="font-family:var(--font-mono); font-weight:bold; color:var(--text-light);">0 / 0</span>
+            <span>⚡ Power:</span><span id="ward-power-val" style="font-family:var(--font-mono); font-weight:bold; color:var(--text-light);">0 / 0</span>
+            <span>💧 Water:</span><span id="ward-water-val" style="font-family:var(--font-mono); font-weight:bold; color:var(--text-light);">0 / 0</span>
+            <span>📊 Gini (Equity):</span><span id="ward-gini-val" style="font-family:var(--font-mono); font-weight:bold; color:var(--text-light);">1.00 (Req: &lt; 0.25)</span>
+            <span>🔌 Robustness:</span><span id="ward-robust-val" style="font-family:var(--font-mono); font-weight:bold; color:var(--text-light);">0% (Req: &gt; 75%)</span>
+          </div>
+          <div id="ward-challenge-status" style="margin-top:8px; font-weight:bold; text-align:center; padding:4px; border-radius:2px; font-size:11px; background:rgba(239,79,79,0.1); color:#ff6b6b; border:1px solid rgba(239,79,79,0.2);">
+            ❌ Targets Unmet
+          </div>
+        </div>
+      </div>
       <div class="sidebar-section flex-1 overflow-y-auto">
         <div class="sidebar-title">📊 Economy</div>
         <div id="economy-panel" style="font-size:12px;color:var(--text-dim);"></div>
@@ -90,6 +118,26 @@
     <div class="game-center">
       <div id="phaser-game" style="width:100%;height:100%;"></div>
       <canvas id="weather-canvas" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:999;"></canvas>
+      <!-- Consistent Legend Overlay -->
+      <div class="civ-panel" id="map-legend" style="position: absolute; bottom: 60px; left: 20px; z-index: 1000; background: rgba(22, 24, 29, 0.95); border: 2px solid var(--gold); border-radius: 4px; padding: 10px; width: 220px; font-family: var(--font-body); font-size: 11px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); pointer-events: auto;">
+        <div style="font-family: var(--font-title); font-size: 10px; color: var(--gold); border-bottom: 1px solid rgba(197,160,89,0.3); padding-bottom: 4px; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 1px;">🗺️ Legend & Key</div>
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+          <div style="font-weight: bold; color: var(--gold-light); margin-top: 2px;">Facilities</div>
+          <div style="display: flex; align-items: center; gap: 6px;"><span style="color: #E24B4A;">🏥</span> Hospital / Medical Siting</div>
+          <div style="display: flex; align-items: center; gap: 6px;"><span style="color: #8B5CF6;">🏫</span> School / University</div>
+          <div style="display: flex; align-items: center; gap: 6px;"><span style="color: #378ADD;">👮</span> Police Headquarters</div>
+          <div style="display: flex; align-items: center; gap: 6px;"><span style="color: #EF9F27;">🚒</span> Fire Dispatch Center</div>
+          
+          <div style="font-weight: bold; color: var(--gold-light); margin-top: 6px;">Networks & Nodes</div>
+          <div style="display: flex; align-items: center; gap: 6px;"><span style="display: inline-block; width: 8px; height: 8px; background: #FFD700; border-radius: 50%;"></span> Terminal / Target Siting</div>
+          <div style="display: flex; align-items: center; gap: 6px;"><span style="display: inline-block; width: 8px; height: 8px; background: #00FFFF; border-radius: 50%;"></span> Steiner / Connection Point</div>
+          <div style="display: flex; align-items: center; gap: 6px;"><span style="display: inline-block; width: 8px; height: 8px; background: #1D9E75; border-radius: 50%;"></span> Frontier Queue / Exploring</div>
+          
+          <div style="font-weight: bold; color: var(--gold-light); margin-top: 6px;">Hazards & Weather</div>
+          <div style="display: flex; align-items: center; gap: 6px;"><span style="color: #E24B4A; font-weight: bold;">⚠️</span> High Crash Blackspot</div>
+          <div style="display: flex; align-items: center; gap: 6px;"><span style="color: #3b82f6; font-weight: bold;">🌊</span> Monsoon Flood Vulnerable</div>
+        </div>
+      </div>
       <div class="bottom-bar">
         <div class="flex items-center gap-3">
           <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);" id="build-status">Click a hex to build</span>
@@ -110,9 +158,32 @@
         <div class="sidebar-title">ℹ️ Selection Info</div>
         <div id="selection-info" style="font-size:12px;color:var(--text-dim);">Click on a hex tile to see info.</div>
       </div>
-      <div class="sidebar-section">
-        <div class="sidebar-title">🧠 Explainer</div>
-        <div class="xai-panel" id="xai-panel">Build structures and use algorithms to optimize your city.</div>
+      <!-- XAI Panel & Playback scrubber -->
+      <div class="sidebar-section" style="display:flex; flex-direction:column; min-height: 250px;">
+        <div class="sidebar-title" style="display:flex; justify-content:space-between; align-items:center;">
+          <span>🧠 Explainer & Trace</span>
+          <div style="display:flex; gap:4px; align-items:center;">
+            <button class="civ-btn civ-btn-sm" style="padding:2px 4px; font-size:9px;" onclick="stepBackward()">⏮️</button>
+            <button class="civ-btn civ-btn-sm" style="padding:2px 4px; font-size:9px;" id="btn-xai-play" onclick="toggleXaiPlayback()">⏸️</button>
+            <button class="civ-btn civ-btn-sm" style="padding:2px 4px; font-size:9px;" onclick="stepForward()">⏭️</button>
+            <button class="civ-btn civ-btn-sm" style="padding:2px 4px; font-size:9px; background: rgba(197,160,89,0.3); border-color: #c5a059;" onclick="skipToCompletion()" title="Skip animation and complete instantly">⏩ Skip</button>
+          </div>
+        </div>
+        <div style="margin-bottom:8px;">
+          <input type="range" id="xai-scrubber" min="0" max="0" value="0" style="width:100%; accent-color:var(--gold);" oninput="onScrubberInput(this.value)">
+          <div style="display:flex; justify-content:space-between; font-size:9px; color:var(--text-muted); margin-top:2px;">
+            <span id="xai-step-curr">Step: 0</span>
+            <span id="xai-step-total">Total: 0</span>
+            <select class="civ-input" id="xai-speed-select" style="font-size:9px; padding:2px; width:auto; border-color:rgba(197,160,89,0.2);" onchange="if(!state.paused){playTrace();}">
+              <option value="500">Slow (500ms)</option>
+              <option value="150" selected>Normal (150ms)</option>
+              <option value="30">Fast (30ms)</option>
+            </select>
+          </div>
+        </div>
+        <div class="xai-panel flex-1 overflow-y-auto" id="xai-panel" style="min-height: 150px; background: rgba(0,0,0,0.3); border:1px solid rgba(197,160,89,0.15); padding:10px; font-size:12px;">
+          Build structures and use algorithms to optimize your city.
+        </div>
       </div>
       <div class="sidebar-section" id="report-section" style="display:none;">
         <div class="sidebar-title">🏆 Report</div>
@@ -716,6 +787,7 @@
 
         updateHUD2();
         updateEconomy();
+        evaluateCityGrid();
         showToast(`Built ${info.name} (-${info.cost}🪙)`, 'success');
       }
     }
@@ -1000,6 +1072,9 @@
       }
 
       state.running = true;
+      state.stepLog = [];
+      state.stepIndex = 0;
+      state.paused = false;
       resetVisualization2();
       document.getElementById('xai-panel').innerHTML = `<p class="highlight">Running ${algoName.toUpperCase()}...</p>`;
 
@@ -1105,22 +1180,59 @@
         state.ws.onmessage = (event) => {
           try {
             const msg = JSON.parse(event.data);
+            const scene = state.game.scene.scenes[0];
+
             if (msg.type === 'step') {
-              animatePhaserDelta(msg.delta, scene);
-              if (msg.delta.xai_text) {
-                document.getElementById('xai-panel').innerHTML = `<p>${msg.delta.xai_text}</p>`;
+              state.stepLog.push(msg.delta);
+              const totalSteps = state.stepLog.length;
+              
+              const scrubber = document.getElementById('xai-scrubber');
+              if (scrubber) scrubber.max = totalSteps;
+              const totalText = document.getElementById('xai-step-total');
+              if (totalText) totalText.textContent = `Total: ${totalSteps}`;
+
+              if (!state.paused) {
+                animatePhaserDelta(msg.delta, scene);
+                state.stepIndex = totalSteps;
+                if (scrubber) scrubber.value = totalSteps;
+                const currText = document.getElementById('xai-step-curr');
+                if (currText) currText.textContent = `Step: ${totalSteps}`;
+                updateXaiPanelForStep(totalSteps - 1);
               }
             } else if (msg.type === 'complete') {
               state.running = false;
               const summary = msg.summary;
+              
+              // Push complete step as final trace element if it has a summary
               if (summary.xai_text) {
-                document.getElementById('xai-panel').innerHTML = `<p class="highlight">${summary.xai_text}</p>`;
+                const summaryDelta = {
+                  kind: 'summary',
+                  xai_text: summary.xai_text,
+                  op_count: summary.efficiency_score ? `Score: ${summary.efficiency_score}% (${summary.grade.grade || summary.grade})` : 'Done',
+                  frontier_size: 0
+                };
+                state.stepLog.push(summaryDelta);
+                const totalSteps = state.stepLog.length;
+                const scrubber = document.getElementById('xai-scrubber');
+                if (scrubber) scrubber.max = totalSteps;
+                const totalText = document.getElementById('xai-step-total');
+                if (totalText) totalText.textContent = `Total: ${totalSteps}`;
+                
+                if (!state.paused) {
+                  state.stepIndex = totalSteps;
+                  if (scrubber) scrubber.value = totalSteps;
+                  const currText = document.getElementById('xai-step-curr');
+                  if (currText) currText.textContent = `Step: ${totalSteps}`;
+                  updateXaiPanelForStep(totalSteps - 1);
+                }
               }
+
               applyAlgorithmToGrid(algoName, summary);
               if (summary.grade) {
                 showReport2(summary.grade, summary, algoName);
               }
               checkQuestCompletion2(algoName);
+              evaluateCityGrid(); // Update metrics and challenges!
             } else if (msg.type === 'error') {
               state.running = false;
               showToast(msg.message || 'Algorithm execution error', 'error');
@@ -1887,6 +1999,7 @@
 
     async function init2() {
       initResizableSidebars();
+      loadWards();
       renderBuildMenus();
       updateHUD2();
       updateEconomy();
@@ -1931,7 +2044,7 @@
         });
         function resizeLeft(e) {
           let newWidth = e.clientX;
-          if (newWidth > 220 && newWidth < 600) {
+          if (newWidth > 340 && newWidth < 600) {
             leftSidebar.style.width = newWidth + 'px';
             if (state.game) {
               const rWidth = rightSidebar ? rightSidebar.offsetWidth : 280;
@@ -1953,10 +2066,10 @@
         });
         function resizeRight(e) {
           let newWidth = window.innerWidth - e.clientX;
-          if (newWidth > 220 && newWidth < 600) {
+          if (newWidth > 300 && newWidth < 600) {
             rightSidebar.style.width = newWidth + 'px';
             if (state.game) {
-              const lWidth = leftSidebar ? leftSidebar.offsetWidth : 320;
+              const lWidth = leftSidebar ? leftSidebar.offsetWidth : 360;
               state.game.scale.resize(window.innerWidth - lWidth - newWidth - 12, window.innerHeight - 52);
             }
           }
@@ -2253,7 +2366,261 @@
 
     // INIT
     init2();
-  </script>
+  
+    // WARD CHALLENGE MODE & CITY EVALUATION
+    state.wards = [];
+    state.activeWard = null;
+
+    async function loadWards() {
+      try {
+        const res = await fetch('/api/game/wards');
+        const data = await res.json();
+        if (data.status === 'ok') {
+          state.wards = data.wards;
+          const selector = document.getElementById('ward-challenge-selector');
+          if (selector) {
+            selector.innerHTML = '<option value="">Select a BBMP Ward...</option>' + 
+              state.wards.map(w => `<option value="${w.code}">${w.name} (Pop: ${Number(w.population).toLocaleString()})</option>`).join('');
+          }
+        }
+      } catch (e) {
+        console.error('Failed to load wards', e);
+      }
+    }
+
+    function selectWardChallenge(wardCode) {
+      const panel = document.getElementById('ward-challenge-panel');
+      if (!wardCode) {
+        state.activeWard = null;
+        if (panel) panel.style.display = 'none';
+        return;
+      }
+      state.activeWard = state.wards.find(w => w.code === wardCode);
+      if (state.activeWard && panel) {
+        document.getElementById('ward-name-title').textContent = state.activeWard.name;
+        document.getElementById('ward-pop-val').textContent = Number(state.activeWard.population).toLocaleString();
+        panel.style.display = 'block';
+        evaluateCityGrid();
+      }
+    }
+
+    async function evaluateCityGrid() {
+      const builtCells = state.hexGrid ? state.hexGrid.filter(c => c.building) : [];
+      
+      // Calculate active counts
+      let hospital = 0, school = 0, power_plant = 0, water_tower = 0;
+      const nodes = builtCells.map(c => {
+        if (c.building === 'hospital') hospital++;
+        if (c.building === 'school') school++;
+        if (c.building === 'power_plant') power_plant++;
+        if (c.building === 'water_tower') water_tower++;
+        
+        return {
+          id: `n_${c.row}_${c.col}`,
+          x: c.x,
+          y: c.y,
+          type: c.building
+        };
+      });
+
+      if (nodes.length === 0) return;
+
+      // Build edges based on adjacency (distance < 62px)
+      const edges = [];
+      for (let i = 0; i < nodes.length; i++) {
+        for (let j = i + 1; j < nodes.length; j++) {
+          const d = Math.hypot(nodes[i].x - nodes[j].x, nodes[i].y - nodes[j].y);
+          if (d < 62) {
+            edges.push({ u: nodes[i].id, v: nodes[j].id, weight: d });
+          }
+        }
+      }
+
+      try {
+        const res = await fetch('/api/game/evaluate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nodes, edges })
+        });
+        const payload = await res.json();
+        if (payload.status === 'ok') {
+          const metrics = payload.metrics;
+          
+          // Update normal HUD metrics
+          const hap = document.getElementById('economy-panel');
+          
+          if (state.activeWard) {
+            const targets = state.activeWard.targets;
+            document.getElementById('ward-hosp-val').textContent = `${hospital} / ${targets.hospital}`;
+            document.getElementById('ward-school-val').textContent = `${school} / ${targets.school}`;
+            document.getElementById('ward-power-val').textContent = `${power_plant} / ${targets.power_plant}`;
+            document.getElementById('ward-water-val').textContent = `${water_tower} / ${targets.water_tower}`;
+            
+            const giniColor = metrics.gini_inequality <= targets.gini ? 'var(--teal)' : 'var(--red)';
+            document.getElementById('ward-gini-val').innerHTML = `<span style="color:${giniColor}; font-weight:bold;">${metrics.gini_inequality.toFixed(3)}</span> (Req: &lt; ${targets.gini})`;
+            
+            const robColor = metrics.robustness >= targets.robustness ? 'var(--teal)' : 'var(--red)';
+            document.getElementById('ward-robust-val').innerHTML = `<span style="color:${robColor}; font-weight:bold;">${metrics.robustness}%</span> (Req: &gt; ${targets.robustness}%)`;
+            
+            // Check challenge win
+            const complete = hospital >= targets.hospital &&
+                             school >= targets.school &&
+                             power_plant >= targets.power_plant &&
+                             water_tower >= targets.water_tower &&
+                             metrics.gini_inequality <= targets.gini &&
+                             metrics.robustness >= targets.robustness;
+                             
+            const statusBox = document.getElementById('ward-challenge-status');
+            if (complete) {
+              statusBox.textContent = '✅ CHALLENGE COMPLETE';
+              statusBox.style.background = 'rgba(29,158,117,0.1)';
+              statusBox.style.color = '#1D9E75';
+              statusBox.style.borderColor = 'rgba(29,158,117,0.3)';
+              
+              if (!state.profile.completed_quests?.includes(`wc_${state.activeWard.code}`)) {
+                state.coins += 500;
+                state.rp += 50;
+                state.population += 1000;
+                state.profile.completed_quests = [...(state.profile.completed_quests || []), `wc_${state.activeWard.code}`];
+                saveProfile();
+                updateHUD2();
+                showToast(`🏆 BBMP Ward Challenge won! +500🪙 +50🧪 to Tech Tree!`, 'achievement');
+              }
+            } else {
+              statusBox.textContent = '❌ Targets Unmet';
+              statusBox.style.background = 'rgba(239,79,79,0.1)';
+              statusBox.style.color = '#ff6b6b';
+              statusBox.style.borderColor = 'rgba(239,79,79,0.2)';
+            }
+          }
+        }
+      } catch (e) {
+        console.error('Failed to evaluate grid', e);
+      }
+    }
+
+    // XAI PLAYBACK SCUBBER AND CONTROLS (PHASER MODE)
+    let playbackTimer = null;
+
+    function playTrace() {
+      if (playbackTimer) clearInterval(playbackTimer);
+      state.paused = false;
+      const playBtn = document.getElementById('btn-xai-play');
+      if (playBtn) playBtn.textContent = '⏸️ Pause';
+      
+      const delay = parseInt(document.getElementById('xai-speed-select')?.value || '150');
+      const scene = state.game.scene.scenes[0];
+
+      playbackTimer = setInterval(() => {
+        if (state.stepIndex < state.stepLog.length && scene) {
+          animatePhaserDelta(state.stepLog[state.stepIndex], scene);
+          updateXaiPanelForStep(state.stepIndex);
+          
+          const scrubber = document.getElementById('xai-scrubber');
+          if (scrubber) scrubber.value = state.stepIndex + 1;
+          const currText = document.getElementById('xai-step-curr');
+          if (currText) currText.textContent = `Step: ${state.stepIndex + 1}`;
+          
+          state.stepIndex++;
+        } else {
+          pauseTrace();
+        }
+      }, delay);
+    }
+
+    function pauseTrace() {
+      state.paused = true;
+      if (playbackTimer) {
+        clearInterval(playbackTimer);
+        playbackTimer = null;
+      }
+      const playBtn = document.getElementById('btn-xai-play');
+      if (playBtn) playBtn.textContent = '▶️ Play';
+    }
+
+    function toggleXaiPlayback() {
+      if (state.paused) {
+        playTrace();
+      } else {
+        pauseTrace();
+      }
+    }
+
+    function stepForward() {
+      pauseTrace();
+      const scene = state.game.scene.scenes[0];
+      if (state.stepIndex < state.stepLog.length && scene) {
+        animatePhaserDelta(state.stepLog[state.stepIndex], scene);
+        updateXaiPanelForStep(state.stepIndex);
+        state.stepIndex++;
+        const scrubber = document.getElementById('xai-scrubber');
+        if (scrubber) scrubber.value = state.stepIndex;
+        const currText = document.getElementById('xai-step-curr');
+        if (currText) currText.textContent = `Step: ${state.stepIndex}`;
+      }
+    }
+
+    function stepBackward() {
+      pauseTrace();
+      if (state.stepIndex > 0) {
+        state.stepIndex--;
+        jumpToStep(state.stepIndex);
+      }
+    }
+
+    function skipToCompletion() {
+      if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+        state.ws.send(JSON.stringify({ action: "skip" }));
+        showToast("Skipping simulation animation frames and completing instantly...", "info");
+      } else {
+        showToast("No active simulation to skip.", "warning");
+      }
+    }
+
+    function onScrubberInput(val) {
+      pauseTrace();
+      jumpToStep(parseInt(val));
+    }
+
+    function jumpToStep(idx) {
+      state.stepIndex = idx;
+      resetVisualization2();
+      const scene = state.game.scene.scenes[0];
+      for (let i = 0; i < idx; i++) {
+        if (scene) animatePhaserDelta(state.stepLog[i], scene);
+      }
+      const scrubber = document.getElementById('xai-scrubber');
+      if (scrubber) scrubber.value = idx;
+      const currText = document.getElementById('xai-step-curr');
+      if (currText) currText.textContent = `Step: ${idx}`;
+      updateXaiPanelForStep(idx - 1);
+    }
+
+    function updateXaiPanelForStep(idx) {
+      const panel = document.getElementById('xai-panel');
+      if (!panel) return;
+      if (idx < 0 || idx >= state.stepLog.length) {
+        panel.innerHTML = 'Build structures and use algorithms to optimize your city.';
+        return;
+      }
+      const delta = state.stepLog[idx];
+      let html = `<div style="font-family:var(--font-mono); font-size:11px; margin-bottom:8px; border-bottom:1px solid rgba(197,160,89,0.15); padding-bottom:6px;">
+        <strong>Trace Step #${idx + 1}</strong><br>
+        <span style="color:var(--gold);">Kind:</span> ${delta.kind}<br>
+        ${delta.node ? `<span style="color:var(--gold);">Active Node:</span> ${delta.node}<br>` : ''}
+        ${delta.from_node ? `<span style="color:var(--gold);">From Node:</span> ${delta.from_node}<br>` : ''}
+        ${delta.weight !== undefined ? `<span style="color:var(--gold);">Edge Weight:</span> ${delta.weight.toFixed(1)}m<br>` : ''}
+        ${delta.total_weight !== undefined ? `<span style="color:var(--gold);">Total Weight:</span> ${delta.total_weight.toFixed(1)}m<br>` : ''}
+        ${delta.distance !== undefined ? `<span style="color:var(--gold);">Distance:</span> ${delta.distance.toFixed(1)}m<br>` : ''}
+        ${delta.op_count !== undefined ? `<span style="color:var(--gold);">Operations:</span> ${delta.op_count}<br>` : ''}
+        ${delta.frontier_size !== undefined ? `<span style="color:var(--gold);">Frontier Queue:</span> ${delta.frontier_size} items<br>` : ''}
+      </div>
+      <div style="font-size:12px; line-height:1.4; color:var(--text-light);">${delta.xai_text || 'No description.'}</div>`;
+      panel.innerHTML = html;
+    }
+
+
+</script>
   <!-- ═══ Technology Tree Modal ═══ -->
   <div class="modal-backdrop" id="tech-tree-modal" style="display:none;">
     <div class="civ-panel modal-content" style="max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; padding: 24px;">

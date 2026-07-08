@@ -475,9 +475,16 @@ def _get_algorithm_generator(algo_key: str, graph, params: dict, graph_data: dic
             target = list(graph.nodes.keys())[-1]
 
     if key == "prim":
-        return mst.prim_mst(graph, start_node=source)
+        return mst.prim_mst(graph, start_node=source, target_node=target)
     elif key == "kruskal":
-        return mst.kruskal_mst(graph)
+        return mst.kruskal_mst(graph, source_node=source, target_node=target)
+    elif key == "steiner":
+        terminals = params.get("terminals") or []
+        if not terminals:
+            terminals = [source] if source is not None else []
+            if target is not None and target not in terminals:
+                terminals.append(target)
+        return mst.steiner_tree(graph, terminals=terminals)
     elif key in {"dijkstra", "shortest_path"}:
         return dijkstra_mod.dijkstra(graph, source=source, target=target)
     elif key == "flooding_astar":
@@ -503,62 +510,62 @@ def _get_algorithm_generator(algo_key: str, graph, params: dict, graph_data: dic
         return pagerank_mod.pagerank_centrality(graph, damping=damping, max_iter=max_iter)
     elif key == "gwo":
         k_val = int(params.get("k", 3))
-        max_iter = int(params.get("max_iter", 5))
+        max_iter = int(params.get("max_iter", 12))
         return metaheuristics.grey_wolf_optimizer(graph, k=k_val, max_iter=max_iter)
     elif key == "alo":
         k_val = int(params.get("k", 3))
-        max_iter = int(params.get("max_iter", 5))
+        max_iter = int(params.get("max_iter", 12))
         return metaheuristics.ant_lion_optimizer(graph, k=k_val, max_iter=max_iter)
     elif key == "hho":
         k_val = int(params.get("k", 3))
-        max_iter = int(params.get("max_iter", 5))
+        max_iter = int(params.get("max_iter", 12))
         return metaheuristics.harris_hawks_optimization(graph, k=k_val, max_iter=max_iter)
     elif key in {"k_median", "facility"}:
         k_val = int(params.get("k", 3))
         return facility.k_median_facility(graph, k=k_val, facility_type=params.get("facility_type", "hospital"))
     elif key in {"coa", "coati"}:
         k_val = int(params.get("k", 3))
-        max_iter = int(params.get("max_iter", 5))
+        max_iter = int(params.get("max_iter", 12))
         return metaheuristics.coati_optimization_algorithm(graph, k=k_val, max_iter=max_iter)
     elif key == "woa":
-        max_iter = int(params.get("max_iter", 5))
+        max_iter = int(params.get("max_iter", 12))
         return metaheuristics.whale_optimization_algorithm(graph, max_iter=max_iter)
     elif key == "run_optimizer":
-        max_iter = int(params.get("max_iter", 5))
+        max_iter = int(params.get("max_iter", 12))
         return metaheuristics.runge_kutta_optimizer(graph, max_iter=max_iter)
     elif key in {"ptbo", "painting"}:
-        max_iter = int(params.get("max_iter", 5))
+        max_iter = int(params.get("max_iter", 12))
         return metaheuristics.painting_training_optimizer(graph, max_iter=max_iter)
     elif key == "mpa":
-        max_iter = int(params.get("max_iter", 5))
+        max_iter = int(params.get("max_iter", 12))
         return metaheuristics.marine_predators_algorithm(graph, max_iter=max_iter)
     elif key == "mfo":
         k_val = int(params.get("k", 3))
-        max_iter = int(params.get("max_iter", 5))
+        max_iter = int(params.get("max_iter", 12))
         return metaheuristics.moth_flame_optimization(graph, k=k_val, max_iter=max_iter)
     elif key == "goa":
         k_val = int(params.get("k", 3))
-        max_iter = int(params.get("max_iter", 5))
+        max_iter = int(params.get("max_iter", 12))
         return metaheuristics.grasshopper_optimization_algorithm(graph, k=k_val, max_iter=max_iter)
     elif key == "ao":
         k_val = int(params.get("k", 3))
-        max_iter = int(params.get("max_iter", 5))
+        max_iter = int(params.get("max_iter", 12))
         return metaheuristics.aquila_optimizer(graph, k=k_val, max_iter=max_iter)
     elif key == "do":
         k_val = int(params.get("k", 3))
-        max_iter = int(params.get("max_iter", 5))
+        max_iter = int(params.get("max_iter", 12))
         return metaheuristics.dandelion_optimizer(graph, k=k_val, max_iter=max_iter)
     elif key == "ssa":
-        max_iter = int(params.get("max_iter", 5))
+        max_iter = int(params.get("max_iter", 12))
         return metaheuristics.salp_swarm_algorithm(graph, max_iter=max_iter)
     elif key == "sma":
-        max_iter = int(params.get("max_iter", 5))
+        max_iter = int(params.get("max_iter", 12))
         return metaheuristics.slime_mould_algorithm(graph, max_iter=max_iter)
     elif key == "aoa":
-        max_iter = int(params.get("max_iter", 5))
+        max_iter = int(params.get("max_iter", 12))
         return metaheuristics.arithmetic_optimization_algorithm(graph, max_iter=max_iter)
     elif key == "gto":
-        max_iter = int(params.get("max_iter", 5))
+        max_iter = int(params.get("max_iter", 12))
         return metaheuristics.gorilla_troops_optimizer(graph, max_iter=max_iter)
     elif key == "transformer":
         return ml_ai.transformer_attention(graph)
@@ -649,29 +656,63 @@ async def ws_algorithm(websocket: WebSocket):
             graph_data = scope_graph_data(graph_data, params)
             graph = _graph_from_data(graph_data)
 
+            # Start background reader task to check for skip commands
+            is_skipped = False
+            async def listen_for_skip():
+                nonlocal is_skipped
+                try:
+                    while True:
+                        incoming = await websocket.receive_json()
+                        if incoming.get("action") == "skip":
+                            is_skipped = True
+                            break
+                except Exception:
+                    pass
+
+            listener_task = asyncio.create_task(listen_for_skip())
+
             try:
-                gen = _get_algorithm_generator(algo_name, graph, params, graph_data)
-                if gen is None:
-                    await websocket.send_json({"type": "error", "message": f"Algorithm '{algo_name}' generator not found."})
-                    continue
+                try:
+                    gen = _get_algorithm_generator(algo_name, graph, params, graph_data)
+                    if gen is None:
+                        await websocket.send_json({"type": "error", "message": f"Algorithm '{algo_name}' generator not found."})
+                        listener_task.cancel()
+                        continue
 
-                start_time = time.time()
-                last_step = None
+                    start_time = time.time()
+                    last_step = None
 
-                for step in gen:
-                    await websocket.send_json({
-                        "type": "step",
-                        "delta": step,
-                        "stats": {
-                            "algo_name": algo_name,
-                            "ops_so_far": step.get("op_count", 0),
-                            "theoretical_n": graph.node_count if hasattr(graph, 'node_count') else len(graph.nodes),
-                            "theoretical_complexity": step.get("theoretical_complexity", "O(V + E)"),
-                            "wall_ms": int((time.time() - start_time) * 1000)
-                        }
-                    })
-                    await asyncio.sleep(delay)
-                    last_step = step
+                    MAX_STEPS = 2500 if algo_name in {"prim", "kruskal"} else 1500
+                    step_count = 0
+                    for step in gen:
+                        step_count += 1
+                        await websocket.send_json({
+                            "type": "step",
+                            "delta": step,
+                            "stats": {
+                                "algo_name": algo_name,
+                                "ops_so_far": step.get("op_count", 0),
+                                "theoretical_n": graph.node_count if hasattr(graph, 'node_count') else len(graph.nodes),
+                                "theoretical_complexity": step.get("theoretical_complexity", "O(V + E)"),
+                                "wall_ms": int((time.time() - start_time) * 1000)
+                            }
+                        })
+                        if not is_skipped:
+                            await asyncio.sleep(delay)
+                        last_step = step
+                        
+                        if step.get("kind") == "algorithm_done":
+                            break
+                        if step_count >= MAX_STEPS:
+                            # Silently drain generator to get the final done step stats
+                            for remaining in gen:
+                                last_step = remaining
+                                if remaining.get("kind") == "algorithm_done":
+                                    break
+                            break
+                finally:
+                    if not listener_task.done():
+                        listener_task.cancel()
 
                 # Post-run metrics grading
                 wall_ms = int((time.time() - start_time) * 1000)

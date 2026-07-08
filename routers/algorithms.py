@@ -12,6 +12,7 @@ from pipeline.geocoder import geocode_place, snap_to_node, GeocodingError
 from pipeline.graph_scope import scope_graph_data
 from pipeline.routing_engine import compare_routes, plan_route, build_nx_graph, resolve_endpoints
 from routers.city import get_cached_city
+from pipeline.validation import validate_shortest_path, validate_mst, validate_steiner_tree
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["algorithms"])
@@ -152,12 +153,40 @@ async def dispatch_algorithm(algorithm: str, graph: nx.Graph, graph_data: dict, 
         "shortest_path": "dijkstra",
     }.get(algorithm, algorithm)
     try:
-        if algorithm == "prim":
-            tree = nx.minimum_spanning_tree(graph, algorithm="prim", weight="weight")
-            return _mst_result(tree, graph)
-        if algorithm == "kruskal":
-            tree = nx.minimum_spanning_tree(graph, algorithm="kruskal", weight="weight")
-            return _mst_result(tree, graph)
+        if algorithm in {"prim", "kruskal"}:
+            terminals = params.get("terminals") or []
+            if not terminals:
+                source, target = _node_pair(graph, params, graph_data)
+                if source is not None:
+                    terminals.append(source)
+                if target is not None and target not in terminals:
+                    terminals.append(target)
+            if len(terminals) < 2:
+                sorted_nodes = sorted(
+                    graph.nodes(data=True),
+                    key=lambda n: n[1].get("pop_weight", 1.0),
+                    reverse=True
+                )
+                terminals = [n[0] for n in sorted_nodes[:3]]
+            from networkx.algorithms.approximation.steinertree import steiner_tree as nx_steiner
+            tree = nx_steiner(graph, terminals, weight="weight")
+            from pipeline.validation import validate_steiner_tree
+            val_res = validate_steiner_tree(graph, terminals, list(tree.edges))
+            logger.info(f"Steiner validation: {val_res}")
+            edges = [{"source": u, "target": v, "weight": round(d.get("weight", 1.0), 2)} for u, v, d in tree.edges(data=True)]
+            total_weight = sum(d.get("weight", 1.0) for u, v, d in tree.edges(data=True))
+            ops = max(graph.number_of_edges(), 1)
+            theoretical = int(len(terminals) * (graph.number_of_nodes() + graph.number_of_edges()) * math.log2(max(graph.number_of_nodes(), 2)))
+            return {
+                "mst_edges": edges, 
+                "visited_order": list(tree.nodes), 
+                "ops": ops, 
+                "theoretical_ops": max(theoretical, 1),
+                "terminals": terminals,
+                "validation": val_res,
+                "total_weight": round(total_weight, 2),
+                "xai_text": f"Steiner Tree complete. Connected terminals {terminals} with total weight {total_weight:.1f}m. Correctness validation: {'Success' if val_res.get('valid') else 'Failed'}."
+            }
         if algorithm == "dijkstra":
             return _dijkstra_result(graph, params, graph_data)
         if algorithm in {"astar", "risk_aware", "flood_aware"}:
@@ -291,8 +320,9 @@ def _dijkstra_result(graph: nx.Graph, params: dict, graph_data: dict | None = No
         path, dist = [source], 0
     ops = max(len(graph.edges) + len(path), 1)
     theoretical = int((graph.number_of_nodes() + graph.number_of_edges()) * math.log2(max(graph.number_of_nodes(), 2)))
-    logger.info("Dijkstra result: %s → %s, distance=%.2f, hops=%d", source, target, dist, len(path) - 1)
-    return {"path": path, "visited_order": path, "dist": round(dist, 2), "distance": round(dist, 2), "source": source, "target": target, "ops": ops, "theoretical_ops": max(theoretical, 1)}
+    val_res = validate_shortest_path(graph, source, target, path, dist)
+    logger.info("Dijkstra result: %s → %s, distance=%.2f, hops=%d. Validation: %s", source, target, dist, len(path) - 1, val_res)
+    return {"path": path, "visited_order": path, "dist": round(dist, 2), "distance": round(dist, 2), "source": source, "target": target, "ops": ops, "theoretical_ops": max(theoretical, 1), "validation": val_res}
 
 
 def _flow_result(graph: nx.Graph, params: dict, graph_data: dict | None = None) -> dict:
@@ -346,7 +376,8 @@ def _contraction_result(graph: nx.Graph, params: dict, graph_data: dict | None =
     # CH query typically settles far fewer nodes than full Dijkstra
     theoretical_preprocess = int(n * math.log2(max(n, 2)) ** 2)
     theoretical_query = int(math.log2(max(n, 2)))
-    logger.info("CH result: %s → %s, distance=%.2f, hops=%d", source, target, dist, len(path) - 1)
+    val_res = validate_shortest_path(graph, source, target, path, dist)
+    logger.info("CH result: %s → %s, distance=%.2f, hops=%d. Validation: %s", source, target, dist, len(path) - 1, val_res)
     return {
         "path": path, "visited_order": path,
         "dist": round(dist, 2), "distance": round(dist, 2),
@@ -354,6 +385,7 @@ def _contraction_result(graph: nx.Graph, params: dict, graph_data: dict | None =
         "shortcuts_used": max(0, len(path) - 2),
         "ops": ops,
         "theoretical_ops": max(theoretical_preprocess + theoretical_query, 1),
+        "validation": val_res
     }
 
 
