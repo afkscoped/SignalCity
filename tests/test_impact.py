@@ -90,3 +90,28 @@ def test_report_generation():
     assert response_report.status_code == 200
     assert "text/html" in response_report.headers["content-type"]
     assert "Applied Decision-Support Report" in response_report.text
+
+
+def test_ward_specific_impact():
+    # Test siting specifically inside Koramangala (ward_1)
+    payload_siting = {
+        "facility_type": "hospital",
+        "k": 2,
+        "max_response_minutes": 8.0,
+        "city_id": "bengaluru",
+        "ward_id": "ward_1"
+    }
+    response_siting = client.post("/api/impact/facility-siting", json=payload_siting)
+    assert response_siting.status_code == 200
+    assert response_siting.json()["after"]["worst_case_min"] <= response_siting.json()["before"]["worst_case_min"]
+
+    # Test backbone cost specifically inside Koramangala (ward_1)
+    payload_backbone = {
+        "facility_type": "hospital",
+        "city_id": "bengaluru",
+        "ward_id": "ward_1"
+    }
+    response_backbone = client.post("/api/impact/backbone-cost", json=payload_backbone)
+    assert response_backbone.status_code == 200
+    assert response_backbone.json()["mst_cost_inr"] <= response_backbone.json()["full_mesh_cost_inr"]
+

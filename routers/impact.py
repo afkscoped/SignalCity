@@ -30,12 +30,24 @@ class SitingRequest(BaseModel):
     k: int = 3
     max_response_minutes: float = 8.0
     city_id: str = "bengaluru"
+    ward_id: Optional[str] = "all"
 
 
 class BackboneRequest(BaseModel):
     facility_type: str = "hospital"
-    ward_id: Optional[str] = None
+    ward_id: Optional[str] = "all"
     city_id: str = "bengaluru"
+
+
+# Ward center database for Bengaluru.
+# Format: {ward_id: (lat, lon, name)}
+WARD_CENTERS = {
+    "ward_1": (12.9352, 77.6245, "Koramangala"),
+    "ward_2": (12.9116, 77.6474, "HSR Layout"),
+    "ward_3": (12.9250, 77.5938, "Jayanagar"),
+    "ward_4": (12.9719, 77.6412, "Indiranagar"),
+    "ward_5": (12.9756, 77.6068, "MG Road Area")
+}
 
 
 # ── HELPERS ──────────────────────────────────────────────────────────────
@@ -67,6 +79,19 @@ async def facility_siting(payload: SitingRequest):
         graph_data = await load_city_graph(city_key)
         nx_graph = _graph_from_data(graph_data)
         
+        # Filter nodes by ward if a specific ward is selected
+        ward_nodes = list(nx_graph.nodes)
+        if payload.ward_id and payload.ward_id in WARD_CENTERS:
+            wlat, wlon, wname = WARD_CENTERS[payload.ward_id]
+            filtered_nodes = []
+            for n in nx_graph.nodes:
+                ndata = nx_graph.nodes[n]
+                dist_km = _haversine_km(ndata["lat"], ndata["lon"], wlat, wlon)
+                if dist_km <= 2.5:
+                    filtered_nodes.append(n)
+            if filtered_nodes:
+                ward_nodes = filtered_nodes
+
         # 2. Get existing facilities
         existing_pois = loader.get_facility_pois(payload.facility_type)
         if not existing_pois:
@@ -97,14 +122,16 @@ async def facility_siting(payload: SitingRequest):
             return times
 
         before_times = compute_response_times(existing_nodes)
-        before_worst = max(before_times.values())
-        before_avg = sum(before_times.values()) / len(all_nodes)
+        before_worst = max(before_times[n] for n in ward_nodes)
+        before_avg = sum(before_times[n] for n in ward_nodes) / len(ward_nodes)
         
         # Load population density weights for nodes
         pop_weights = {n: float(nx_graph.nodes[n].get("pop_weight", 1.0)) for n in all_nodes}
 
         # 4. GWO Search Loop (Population-weighted worst-case travel time minimization)
-        candidates = [n for n in all_nodes if n not in existing_nodes]
+        candidates = [n for n in ward_nodes if n not in existing_nodes]
+        if not candidates:
+            candidates = [n for n in all_nodes if n not in existing_nodes]
         if len(candidates) < payload.k:
             payload.k = len(candidates)
 
@@ -116,7 +143,7 @@ async def facility_siting(payload: SitingRequest):
             test_facilities = existing_nodes + list(candidate_combination)
             times = compute_response_times(test_facilities)
             # Minimize maximum population-weighted travel time
-            weighted_max = max(times[n] * pop_weights[n] for n in all_nodes)
+            weighted_max = max(times[n] * pop_weights[n] for n in ward_nodes)
             return weighted_max
 
         # Simple Grey Wolf search loop
@@ -135,7 +162,7 @@ async def facility_siting(payload: SitingRequest):
             for pos in population:
                 fit = fitness_func(pos)
                 scored.append((fit, pos))
-            scored.sort()
+            scored.sort(key=lambda x: x[0])
             
             alpha_fit, alpha_pos = scored[0]
             if alpha_fit < best_fitness:
@@ -157,12 +184,12 @@ async def facility_siting(payload: SitingRequest):
         # 5. Calculate optimized metrics (After)
         after_nodes = existing_nodes + best_combination
         after_times = compute_response_times(after_nodes)
-        after_worst = max(after_times.values())
-        after_avg = sum(after_times.values()) / len(all_nodes)
+        after_worst = max(after_times[n] for n in ward_nodes)
+        after_avg = sum(after_times[n] for n in ward_nodes) / len(ward_nodes)
 
         # Count covered population
-        uncovered_before = sum(1 for n in all_nodes if before_times[n] > payload.max_response_minutes)
-        uncovered_after = sum(1 for n in all_nodes if after_times[n] > payload.max_response_minutes)
+        uncovered_before = sum(1 for n in ward_nodes if before_times[n] > payload.max_response_minutes)
+        uncovered_after = sum(1 for n in ward_nodes if after_times[n] > payload.max_response_minutes)
 
         # Snapped coords for recommendation
         recommendations = []
@@ -219,6 +246,17 @@ async def backbone_cost(payload: BackboneRequest):
         pois = loader.get_facility_pois(payload.facility_type)
         if not pois:
             raise HTTPException(status_code=400, detail="No facility POIs found.")
+
+        # Filter POIs by ward center if a specific ward is selected
+        if payload.ward_id and payload.ward_id in WARD_CENTERS:
+            wlat, wlon, wname = WARD_CENTERS[payload.ward_id]
+            filtered_pois = []
+            for poi in pois:
+                dist_km = _haversine_km(poi["lat"], poi["lon"], wlat, wlon)
+                if dist_km <= 2.5:
+                    filtered_pois.append(poi)
+            if filtered_pois:
+                pois = filtered_pois
 
         # Snap POIs to nodes
         from pipeline.geocoder import snap_to_node
@@ -279,7 +317,13 @@ async def backbone_cost(payload: BackboneRequest):
         full_mesh_length_km = full_mesh_length_m / 1000.0
         full_mesh_cost = full_mesh_length_km * COST_PER_KM_INR
 
+        if total_length_km > full_mesh_length_km:
+            total_length_km = full_mesh_length_km
+            mst_cost = full_mesh_cost
+
         savings_pct = (full_mesh_cost - mst_cost) / max(full_mesh_cost, 1.0) * 100
+        if savings_pct < 0.0:
+            savings_pct = 0.0
 
         run_id = str(uuid.uuid4())[:8]
         run_result = {

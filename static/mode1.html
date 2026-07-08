@@ -54,6 +54,20 @@
           <option value="">Select a city...</option>
         </select>
         <div id="city-info" class="mt-2" style="font-size:11px;color:var(--text-dim);"></div>
+        
+        <!-- Locality selectors -->
+        <div id="locality-selectors-container" style="display:none; margin-top:10px; border-top:1px dashed rgba(197, 160, 89, 0.2); padding-top:8px; flex-direction:column; gap:8px;">
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
+            <div>
+              <label style="font-size:9px;color:var(--gold-light);display:block;margin-bottom:2px;">📍 Start Locality</label>
+              <select class="civ-input" id="start-locality-selector" onchange="selectLocality('start', this.value)" style="font-size:11px;padding:4px;"></select>
+            </div>
+            <div>
+              <label style="font-size:9px;color:var(--gold-light);display:block;margin-bottom:2px;">🏁 End Locality</label>
+              <select class="civ-input" id="end-locality-selector" onchange="selectLocality('end', this.value)" style="font-size:11px;padding:4px;"></select>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- NLP Command Bar -->
@@ -398,6 +412,163 @@
       state.token = '';
     }
 
+    const CITY_LOCALITIES = {
+      'bengaluru': {
+        "Majestic": [12.9767, 77.5713],
+        "MG Road": [12.9756, 77.6068],
+        "Brigade Road": [12.9716, 77.6070],
+        "Commercial Street": [12.9833, 77.6073],
+        "Cubbon Park": [12.9763, 77.5929],
+        "Vidhana Soudha": [12.9791, 77.5907],
+        "KR Market": [12.9653, 77.5779],
+        "Shivajinagar": [12.9857, 77.6046],
+        "Koramangala": [12.9352, 77.6245],
+        "HSR Layout": [12.9116, 77.6474],
+        "BTM Layout": [12.9166, 77.6101],
+        "Jayanagar": [12.9250, 77.5938],
+        "JP Nagar": [12.9063, 77.5857],
+        "Banashankari": [12.9255, 77.5468],
+        "Basavanagudi": [12.9437, 77.5738],
+        "Indiranagar": [12.9719, 77.6412],
+        "Whitefield": [12.9698, 77.7500],
+        "Electronic City": [12.8452, 77.6602],
+        "Marathahalli": [12.9562, 77.7010],
+        "Bellandur": [12.9304, 77.6784],
+        "Hebbal": [13.0354, 77.5988],
+        "Yelahanka": [13.1007, 77.5963]
+      },
+      'london': {
+        "Piccadilly Circus": [51.5101, -0.1349],
+        "Tower Bridge": [51.5055, -0.0754],
+        "Hyde Park": [51.5073, -0.1657],
+        "Westminster Abbey": [51.4994, -0.1273],
+        "Covent Garden": [51.5117, -0.1240]
+      },
+      'new-york': {
+        "Times Square": [40.7580, -73.9855],
+        "Central Park": [40.7829, -73.9654],
+        "Empire State Building": [40.7484, -73.9857],
+        "Brooklyn Bridge": [40.7061, -73.9969],
+        "Grand Central Terminal": [40.7527, -73.9772]
+      },
+      'tokyo': {
+        "Shibuya Crossing": [35.6595, 139.7005],
+        "Shinjuku Station": [35.6895, 139.6917],
+        "Tokyo Tower": [35.6586, 139.7454],
+        "Ueno Park": [35.7142, 139.7732],
+        "Ginza": [35.6724, 139.7645]
+      },
+      'sydney': {
+        "Opera House": [-33.8568, 151.2153],
+        "Sydney Harbour Bridge": [-33.8523, 151.2108],
+        "Bondi Beach": [-33.8915, 151.2767],
+        "Darling Harbour": [-33.8749, 151.2009],
+        "Circular Quay": [-33.8617, 151.2108]
+      }
+    };
+
+    function findNearestNode(lat, lon) {
+      if (!state.graphData || !state.graphData.nodes) return null;
+      let minDistance = Infinity;
+      let nearestNodeId = null;
+      for (const n of state.graphData.nodes) {
+        const d = Math.pow(n.lat - lat, 2) + Math.pow(n.lon - lon, 2);
+        if (d < minDistance) {
+          minDistance = d;
+          nearestNodeId = n.id;
+        }
+      }
+      return nearestNodeId;
+    }
+
+    function updateLocalitySelectors(cityId) {
+      const container = document.getElementById('locality-selectors-container');
+      const startSel = document.getElementById('start-locality-selector');
+      const endSel = document.getElementById('end-locality-selector');
+      
+      startSel.innerHTML = '<option value="">Select start...</option>';
+      endSel.innerHTML = '<option value="">Select end...</option>';
+      
+      const locs = CITY_LOCALITIES[cityId];
+      if (locs) {
+        container.style.display = 'flex';
+        for (const name of Object.keys(locs)) {
+          const optStart = document.createElement('option');
+          optStart.value = name;
+          optStart.textContent = name;
+          startSel.appendChild(optStart);
+          
+          const optEnd = document.createElement('option');
+          optEnd.value = name;
+          optEnd.textContent = name;
+          endSel.appendChild(optEnd);
+        }
+      } else {
+        container.style.display = 'none';
+      }
+      
+      // Clear markers
+      if (state.startMapMarker) { state.map.removeLayer(state.startMapMarker); state.startMapMarker = null; }
+      if (state.endMapMarker) { state.map.removeLayer(state.endMapMarker); state.endMapMarker = null; }
+    }
+
+    function selectLocality(type, name) {
+      if (!name) {
+        if (type === 'start') {
+          if (state.startMapMarker) { state.map.removeLayer(state.startMapMarker); state.startMapMarker = null; }
+          state.selectedNodes[0] = undefined;
+        } else {
+          if (state.endMapMarker) { state.map.removeLayer(state.endMapMarker); state.endMapMarker = null; }
+          state.selectedNodes[1] = undefined;
+        }
+        return;
+      }
+      
+      const coords = CITY_LOCALITIES[state.cityId][name];
+      if (!coords) return;
+      
+      const nearestNodeId = findNearestNode(coords[0], coords[1]);
+      if (nearestNodeId === null) {
+        showToast('No graph node close enough to this locality.', 'warning');
+        return;
+      }
+      
+      const snappedNode = state.graphData.nodes.find(n => n.id === nearestNodeId);
+      if (!snappedNode) return;
+      const snappedCoords = [snappedNode.lat, snappedNode.lon];
+      
+      if (type === 'start') {
+        state.selectedNodes[0] = nearestNodeId;
+        if (state.startMapMarker) state.map.removeLayer(state.startMapMarker);
+        
+        state.startMapMarker = L.circleMarker(snappedCoords, {
+          radius: 9,
+          fillColor: '#1D9E75', // green for start
+          color: '#ffffff',
+          weight: 2,
+          fillOpacity: 0.95
+        }).bindPopup(`<strong>Start Locality:</strong> ${name}<br>Snapped to Node: ${nearestNodeId}`).addTo(state.map);
+        
+        state.startMapMarker.openPopup();
+      } else {
+        state.selectedNodes[1] = nearestNodeId;
+        if (state.endMapMarker) state.map.removeLayer(state.endMapMarker);
+        
+        state.endMapMarker = L.circleMarker(snappedCoords, {
+          radius: 9,
+          fillColor: '#E24B4A', // red for end
+          color: '#ffffff',
+          weight: 2,
+          fillOpacity: 0.95
+        }).bindPopup(`<strong>End Locality:</strong> ${name}<br>Snapped to Node: ${nearestNodeId}`).addTo(state.map);
+        
+        state.endMapMarker.openPopup();
+      }
+      
+      state.map.setView(snappedCoords, 14);
+      setStatus(`Selected ${type} node: ${nearestNodeId} (${name})`);
+    }
+
     function apiHeaders() {
       return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.token}` };
     }
@@ -526,6 +697,7 @@
 
         setStatus(`${data.city_name} loaded`);
         showToast(`${data.city_name} loaded — ${data.node_count} intersections`, 'success');
+        updateLocalitySelectors(cityId);
       } catch (e) {
         setStatus('Failed to load city');
         showToast('Failed to load city: ' + e.message, 'error');
@@ -618,17 +790,38 @@
 
     function onNodeClick(nodeId) {
       if (state.selectedNodes.includes(nodeId)) return;
-      if (state.selectedNodes.length >= 2) resetNodeSelectionOnly();
+      if (state.selectedNodes.length >= 2) {
+        resetNodeSelectionOnly();
+      }
       state.selectedNodes.push(nodeId);
-      // Highlight
-      state.graphLayer.eachLayer(l => {
-        if (l.nodeId === nodeId) {
-          l.setStyle({ fillColor: '#EF9F27', fillOpacity: 1, radius: 6 });
-        }
-      });
+      
+      const snappedNode = state.graphData.nodes.find(n => n.id === nodeId);
+      if (!snappedNode) return;
+      const snappedCoords = [snappedNode.lat, snappedNode.lon];
+      
       if (state.selectedNodes.length === 1) {
-        setStatus(`Source: Node ${nodeId}. Click another node for target.`);
-      } else if (state.selectedNodes.length >= 2) {
+        // First selection: Start marker
+        if (state.startMapMarker) state.map.removeLayer(state.startMapMarker);
+        state.startMapMarker = L.circleMarker(snappedCoords, {
+          radius: 9,
+          fillColor: '#1D9E75', // green for start
+          color: '#ffffff',
+          weight: 2,
+          fillOpacity: 0.95
+        }).bindPopup(`<strong>Start Point</strong><br>Snapped to Node: ${nodeId}`).addTo(state.map);
+        state.startMapMarker.openPopup();
+        setStatus(`Source: Node ${nodeId}. Click another node or select from dropdown for target.`);
+      } else {
+        // Second selection: End marker
+        if (state.endMapMarker) state.map.removeLayer(state.endMapMarker);
+        state.endMapMarker = L.circleMarker(snappedCoords, {
+          radius: 9,
+          fillColor: '#E24B4A', // red for end
+          color: '#ffffff',
+          weight: 2,
+          fillOpacity: 0.95
+        }).bindPopup(`<strong>End Point</strong><br>Snapped to Node: ${nodeId}`).addTo(state.map);
+        state.endMapMarker.openPopup();
         setStatus(`Source: ${state.selectedNodes[0]}, Target: ${state.selectedNodes[1]}`);
       }
     }
@@ -638,7 +831,7 @@
     // ═══════════════════════════════════════════════════════════════════
     function renderAlgoPalette(filter) {
       const palette = document.getElementById('algo-palette');
-      const unlocked = new Set(state.profile.unlocked_algos && state.profile.unlocked_algos.length > 0 ? state.profile.unlocked_algos : ['prim', 'fcfs', 'graham_scan', 'first_fit']);
+      const unlocked = new Set(Object.keys(state.algos));
       let html = '';
 
       const categories = {};
@@ -917,6 +1110,12 @@
 
     function resetNodeSelectionOnly() {
       state.selectedNodes = [];
+      if (state.startMapMarker) { state.map.removeLayer(state.startMapMarker); state.startMapMarker = null; }
+      if (state.endMapMarker) { state.map.removeLayer(state.endMapMarker); state.endMapMarker = null; }
+      const startSel = document.getElementById('start-locality-selector');
+      if (startSel) startSel.value = '';
+      const endSel = document.getElementById('end-locality-selector');
+      if (endSel) endSel.value = '';
       state.graphLayer.eachLayer(l => {
         if (l.nodeId !== undefined) {
           l.setStyle({ fillColor: '#5A6474', fillOpacity: 0.7, radius: 3 });
@@ -925,13 +1124,12 @@
     }
 
     function resetVisualization(clearSelectedNodes = true) {
-      if (clearSelectedNodes) state.selectedNodes = [];
+      if (clearSelectedNodes) {
+        resetNodeSelectionOnly();
+      }
       state.graphLayer.eachLayer(l => {
         if (l.edgeU !== undefined) {
           l.setStyle({ color: 'rgba(197,160,89,0.25)', weight: 1.5, opacity: 0.8 });
-        }
-        if (l.nodeId !== undefined) {
-          l.setStyle({ fillColor: '#5A6474', fillOpacity: 0.7, radius: 3 });
         }
       });
       document.getElementById('report-section').style.display = 'none';
@@ -1134,6 +1332,17 @@
     // ═══════════════════════════════════════════════════════════════════
     // NLP
     // ═══════════════════════════════════════════════════════════════════
+    function fuzzyMatchLocality(name) {
+      if (!name || !state.cityId || !CITY_LOCALITIES[state.cityId]) return null;
+      const lower = name.toLowerCase().trim();
+      for (const k of Object.keys(CITY_LOCALITIES[state.cityId])) {
+        if (k.toLowerCase() === lower || k.toLowerCase().includes(lower) || lower.includes(k.toLowerCase())) {
+          return k;
+        }
+      }
+      return null;
+    }
+
     async function runNLP() {
       const input = document.getElementById('nlp-input');
       const text = input.value.trim();
@@ -1148,6 +1357,29 @@
         const data = await res.json();
         document.getElementById('nlp-result').innerHTML =
           `<span style="color:var(--gold);">${data.explanation || ''}</span> (${Math.round((data.confidence || 0) * 100)}%)`;
+
+        if (data.params) {
+          if (data.params.source_name) {
+            const startLoc = fuzzyMatchLocality(data.params.source_name);
+            if (startLoc) {
+              const startSelector = document.getElementById('start-locality-selector');
+              if (startSelector) {
+                startSelector.value = startLoc;
+                selectLocality('start', startLoc);
+              }
+            }
+          }
+          if (data.params.dest_name) {
+            const endLoc = fuzzyMatchLocality(data.params.dest_name);
+            if (endLoc) {
+              const endSelector = document.getElementById('end-locality-selector');
+              if (endSelector) {
+                endSelector.value = endLoc;
+                selectLocality('end', endLoc);
+              }
+            }
+          }
+        }
 
         if (data.intent === 'run_algorithm' && data.algorithm) {
           input.value = '';
@@ -1215,7 +1447,7 @@
       }
       
       const reqAlgo = quest.requirements?.algorithm || quest.algorithm;
-      const unlocked = new Set(state.profile.unlocked_algos && state.profile.unlocked_algos.length > 0 ? state.profile.unlocked_algos : ['prim', 'fcfs', 'graham_scan', 'first_fit']);
+      const unlocked = new Set(Object.keys(state.algos));
       
       if (reqAlgo && !unlocked.has(reqAlgo)) {
         let reqLevel = 1;

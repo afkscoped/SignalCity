@@ -216,6 +216,18 @@
           </select>
         </div>
 
+        <div style="margin-bottom:15px;">
+          <label style="font-size:11px;color:var(--gold-light);display:block;margin-bottom:5px;">Target Ward / Area</label>
+          <select class="civ-input" id="siting-ward">
+            <option value="all">Whole City (Global)</option>
+            <option value="ward_1">Koramangala</option>
+            <option value="ward_2">HSR Layout</option>
+            <option value="ward_3">Jayanagar</option>
+            <option value="ward_4">Indiranagar</option>
+            <option value="ward_5">MG Road Area</option>
+          </select>
+        </div>
+
         <div style="margin-bottom:15px; display:grid; grid-template-columns:1fr 1fr; gap:10px;">
           <div>
             <label style="font-size:11px;color:var(--gold-light);display:block;margin-bottom:5px;">New Units (k)</label>
@@ -274,6 +286,18 @@
             <option value="hospital">Connect Hospitals</option>
             <option value="fire_station">Connect Fire Stations</option>
             <option value="charging_station">Connect EV Charging hubs</option>
+          </select>
+        </div>
+
+        <div style="margin-bottom:15px;">
+          <label style="font-size:11px;color:var(--gold-light);display:block;margin-bottom:5px;">Target Ward / Area</label>
+          <select class="civ-input" id="backbone-ward">
+            <option value="all">Whole City (Global)</option>
+            <option value="ward_1">Koramangala</option>
+            <option value="ward_2">HSR Layout</option>
+            <option value="ward_3">Jayanagar</option>
+            <option value="ward_4">Indiranagar</option>
+            <option value="ward_5">MG Road Area</option>
           </select>
         </div>
 
@@ -367,7 +391,7 @@
         const response = await fetch('/api/impact/transit-equity?city_id=bengaluru', {method: 'POST'});
         const data = await response.json();
         // Since we also generated mock ward geometries in Phase 2, let's load the wards GeoJSON
-        const geoResponse = await fetch('/static/../data/civic/bbmp_wards.geojson');
+        const geoResponse = await fetch('/data/civic/bbmp_wards.geojson');
         const wardsGeo = await geoResponse.json();
         
         if (wardsLayer) map.removeLayer(wardsLayer);
@@ -419,13 +443,16 @@
       markersLayer.clearLayers();
       cablesLayer.clearLayers();
 
+      const ward = document.getElementById('siting-ward').value;
+
       const response = await fetch('/api/impact/facility-siting', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
           facility_type: ftype,
           k: parseInt(k),
-          max_response_minutes: parseFloat(max_time)
+          max_response_minutes: parseFloat(max_time),
+          ward_id: ward
         })
       });
       const data = await response.json();
@@ -470,10 +497,12 @@
       markersLayer.clearLayers();
       cablesLayer.clearLayers();
 
+      const ward = document.getElementById('backbone-ward').value;
+
       const response = await fetch('/api/impact/backbone-cost', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ facility_type: ftype })
+        body: JSON.stringify({ facility_type: ftype, ward_id: ward })
       });
       const data = await response.json();
       
@@ -488,9 +517,32 @@
       document.getElementById('result-backbone').style.display = 'block';
 
       // Re-fetch POIs to plot MST cables on map
-      const poisResponse = await fetch('/static/../data/civic/facility_pois.json');
+      const poisResponse = await fetch('/data/civic/facility_pois.json');
       const poisData = await poisResponse.json();
-      const nodes = poisData[ftype == 'hospital' ? 'hospital' : (ftype == 'fire_station' ? 'fire_station' : 'charging_station')];
+      let nodes = poisData[ftype == 'hospital' ? 'hospital' : (ftype == 'fire_station' ? 'fire_station' : 'charging_station')];
+
+      const WARD_CENTERS = {
+        "ward_1": [12.9352, 77.6245],
+        "ward_2": [12.9116, 77.6474],
+        "ward_3": [12.9250, 77.5938],
+        "ward_4": [12.9719, 77.6412],
+        "ward_5": [12.9756, 77.6068]
+      };
+      if (ward && WARD_CENTERS[ward]) {
+        const center = WARD_CENTERS[ward];
+        function getDistKm(lat1, lon1, lat2, lon2) {
+          const R = 6371;
+          const dLat = (lat2-lat1) * Math.PI / 180;
+          const dLon = (lon2-lon1) * Math.PI / 180;
+          const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                    Math.sin(dLon/2) * Math.sin(dLon/2);
+          const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+          return R * c;
+        }
+        const filtered = nodes.filter(n => getDistKm(n.lat, n.lon, center[0], center[1]) <= 2.5);
+        if (filtered.length > 0) nodes = filtered;
+      }
       
       // Plot connection cables between node points (draw MST links)
       for (let i = 0; i < nodes.length - 1; i++) {
@@ -550,7 +602,7 @@
       document.getElementById('result-equity').style.display = 'block';
 
       // Load GTFS stops to show public transit coverage density
-      const stopsResponse = await fetch('/static/../data/civic/bmtc_stops.txt');
+      const stopsResponse = await fetch('/data/civic/bmtc_stops.txt');
       const stopsTxt = await stopsResponse.text();
       // Simple parse CSV stops
       const lines = stopsTxt.split('\n');

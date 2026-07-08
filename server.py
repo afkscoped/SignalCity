@@ -38,6 +38,7 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
 
 Path("static").mkdir(exist_ok=True)
 app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/data", StaticFiles(directory="data"), name="data")
 app.include_router(city.router)
 app.include_router(algorithms.router)
 app.include_router(nlp.router)
@@ -618,16 +619,6 @@ async def ws_algorithm(websocket: WebSocket):
 
             algo_name = data.get("algorithm", "dijkstra")
             user_id = data.get("user_id")
-            if user_id and user_id != "guest":
-                try:
-                    user_profile = await repo.get_user_by_id(user_id)
-                    if user_profile:
-                        unlocked_list = user_profile.get("unlocked_algos", ["prim", "fcfs", "graham_scan", "first_fit", "dijkstra"])
-                        if algo_name not in unlocked_list:
-                            await websocket.send_json({"type": "error", "message": f"Algorithm '{algo_name}' is locked. Research it first!"})
-                            continue
-                except Exception as check_err:
-                    print(f"Error checking unlocked algos in WebSocket: {check_err}")
 
             params = data.get("params", {})
             speed_ms = float(params.get("speed_ms", 120))
