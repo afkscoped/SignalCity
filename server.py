@@ -18,7 +18,7 @@ from database import repositories as repo
 from database.connection import close_db, connect_db, is_memory_mode
 from routers.algorithms import ALGORITHMS, dispatch_algorithm, _graph_from_data
 from routers.city import get_cached_city
-from routers import algorithms, city, game, nlp
+from routers import algorithms, city, game, nlp, impact
 
 load_dotenv()
 
@@ -33,7 +33,7 @@ async def lifespan(app: FastAPI):
     await close_db()
 
 
-app = FastAPI(title="Signal City", version="2.0", lifespan=lifespan)
+app = FastAPI(title="Signal City", version="3.0", lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 Path("static").mkdir(exist_ok=True)
@@ -42,6 +42,7 @@ app.include_router(city.router)
 app.include_router(algorithms.router)
 app.include_router(nlp.router)
 app.include_router(game.router)
+app.include_router(impact.router)
 
 
 def _page(path: str):
@@ -71,6 +72,11 @@ async def serve_mode1():
 @app.get("/mode2")
 async def serve_mode2():
     return _page("static/mode2.html")
+
+
+@app.get("/impact")
+async def serve_impact():
+    return _page("static/impact.html")
 
 
 @app.get("/health")
@@ -330,9 +336,10 @@ ALGO_REGISTRY = {
 }
 
 
-def _get_algorithm_generator(algo_key: str, graph, params: dict):
+def _get_algorithm_generator(algo_key: str, graph, params: dict, graph_data: dict | None = None):
     from algorithms.graph import WeightedGraph
     import networkx as nx
+    from pipeline.geocoder import geocode_place, snap_to_node, GeocodingError
 
     # Convert networkx Graph to WeightedGraph if needed
     if not isinstance(graph, WeightedGraph):
@@ -349,14 +356,7 @@ def _get_algorithm_generator(algo_key: str, graph, params: dict):
                 "lon": data.get("lon", 0.0),
                 "pop_weight": data.get("pop_weight", 1.0)
             }
-            wg.adj[nid] = []
-        edge_id = 0
         for u, v, data in graph.edges(data=True):
-            weight = data.get("weight", 1.0)
-            capacity = data.get("capacity", 800)
-            length_m = data.get("length_m", 100.0)
-            speed_kph = data.get("speed_kph", 30.0)
-
             try:
                 u_id = int(u)
             except ValueError:
@@ -365,17 +365,18 @@ def _get_algorithm_generator(algo_key: str, graph, params: dict):
                 v_id = int(v)
             except ValueError:
                 v_id = v
+            weight = float(data.get("weight", 1.0))
+            capacity = int(data.get("capacity", 800))
+            length_m = float(data.get("length_m", 100.0))
+            edge_id = int(data.get("edge_id", 0))
 
-            edge_data_uv = {
-                "to": v_id, "weight": weight, "capacity": capacity,
-                "edge_id": edge_id, "length_m": length_m, "speed_kph": speed_kph
-            }
-            edge_data_vu = {
-                "to": u_id, "weight": weight, "capacity": capacity,
-                "edge_id": edge_id, "length_m": length_m, "speed_kph": speed_kph
-            }
-            wg.adj[u_id].append(edge_data_uv)
-            wg.adj[v_id].append(edge_data_vu)
+            if u_id not in wg.adj:
+                wg.adj[u_id] = []
+            if v_id not in wg.adj:
+                wg.adj[v_id] = []
+
+            wg.adj[u_id].append({"to": v_id, "weight": weight, "capacity": capacity, "edge_id": edge_id, "length_m": length_m})
+            wg.adj[v_id].append({"to": u_id, "weight": weight, "capacity": capacity, "edge_id": edge_id, "length_m": length_m})
             wg.edge_index[(u_id, v_id)] = len(wg.adj[u_id]) - 1
             wg.edge_index[(v_id, u_id)] = len(wg.adj[v_id]) - 1
             wg._edge_list.append({"u": u_id, "v": v_id, "weight": weight, "capacity": capacity,
@@ -413,6 +414,39 @@ def _get_algorithm_generator(algo_key: str, graph, params: dict):
 
     source = params.get("source_node", params.get("start_node", params.get("source")))
     target = params.get("sink_node", params.get("end_node", params.get("target")))
+
+    # Resolve place names via geocoder if provided
+    source_name = params.get("source_name")
+    dest_name = params.get("dest_name")
+    city_key = params.get("city_id", "bengaluru")
+
+    if graph_data and source_name:
+        try:
+            lat, lon = geocode_place(source_name, city_key)
+            snapped = snap_to_node(graph_data, lat, lon)
+            if snapped:
+                try:
+                    snapped_parsed = int(snapped)
+                except ValueError:
+                    snapped_parsed = snapped
+                if snapped_parsed in graph.nodes:
+                    source = snapped_parsed
+        except Exception as e:
+            print(f"[WS] Error geocoding source '{source_name}': {e}")
+
+    if graph_data and dest_name:
+        try:
+            lat, lon = geocode_place(dest_name, city_key)
+            snapped = snap_to_node(graph_data, lat, lon)
+            if snapped:
+                try:
+                    snapped_parsed = int(snapped)
+                except ValueError:
+                    snapped_parsed = snapped
+                if snapped_parsed in graph.nodes:
+                    target = snapped_parsed
+        except Exception as e:
+            print(f"[WS] Error geocoding dest '{dest_name}': {e}")
 
     if graph.nodes:
         first_node = list(graph.nodes.keys())[0]
@@ -613,7 +647,7 @@ async def ws_algorithm(websocket: WebSocket):
             graph = _graph_from_data(graph_data)
 
             try:
-                gen = _get_algorithm_generator(algo_name, graph, params)
+                gen = _get_algorithm_generator(algo_name, graph, params, graph_data)
                 if gen is None:
                     await websocket.send_json({"type": "error", "message": f"Algorithm '{algo_name}' generator not found."})
                     continue

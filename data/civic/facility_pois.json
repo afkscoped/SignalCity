@@ -1,0 +1,1903 @@
+{
+  "hospital": [
+    {
+      "name": "Bengaluru Hospital, Susruta Medical Aid AndResearch Home Limited",
+      "lat": 12.937673,
+      "lon": 77.580284
+    },
+    {
+      "name": "Manipal Northside Hospital",
+      "lat": 13.001128,
+      "lon": 77.563929
+    },
+    {
+      "name": "Government Primary Health Centre",
+      "lat": 12.950323,
+      "lon": 77.616262
+    },
+    {
+      "name": "Ramakrishna Nursing Home and Hospital",
+      "lat": 12.936433,
+      "lon": 77.583477
+    },
+    {
+      "name": "Sri Vinayaka Poly Clinic",
+      "lat": 12.939058,
+      "lon": 77.55108
+    },
+    {
+      "name": "Mallya Audikesh Diagnostics Center",
+      "lat": 12.981505,
+      "lon": 77.601194
+    },
+    {
+      "name": "Mallige Medical Centre",
+      "lat": 12.985247,
+      "lon": 77.580385
+    },
+    {
+      "name": "Devine Hospital",
+      "lat": 13.0039,
+      "lon": 77.603931
+    },
+    {
+      "name": "Lalbagh Nursing Home",
+      "lat": 12.945231,
+      "lon": 77.586173
+    },
+    {
+      "name": "Government Maternity Hospital",
+      "lat": 12.99886,
+      "lon": 77.581742
+    },
+    {
+      "name": NaN,
+      "lat": 13.004364,
+      "lon": 77.565296
+    },
+    {
+      "name": "SDS Tuberculosis Research Centre and Rajiv Gandhi Institute of Chest diseases",
+      "lat": 12.936796,
+      "lon": 77.590709
+    },
+    {
+      "name": "Maiya Multispecialty Hospital",
+      "lat": 12.942614,
+      "lon": 77.585453
+    },
+    {
+      "name": "Narayana Netralaya",
+      "lat": 12.96714,
+      "lon": 77.609448
+    },
+    {
+      "name": "Srinivasa Nursing Home",
+      "lat": 12.942304,
+      "lon": 77.617489
+    },
+    {
+      "name": "Kangila Clinic",
+      "lat": 12.93365,
+      "lon": 77.56606
+    },
+    {
+      "name": "Vasan Eye Care Hospital, Koramangala",
+      "lat": 12.940237,
+      "lon": 77.62534
+    },
+    {
+      "name": "Seventh Day Adventist Hospital",
+      "lat": 12.995625,
+      "lon": 77.611327
+    },
+    {
+      "name": "Srinivasa Nursing Home",
+      "lat": 12.996508,
+      "lon": 77.622046
+    },
+    {
+      "name": "Pristine Health care",
+      "lat": 12.938277,
+      "lon": 77.618675
+    },
+    {
+      "name": "Diacon Hospital",
+      "lat": 13.003768,
+      "lon": 77.549834
+    },
+    {
+      "name": "Agarwal Eye Hospital",
+      "lat": 12.927342,
+      "lon": 77.62213
+    },
+    {
+      "name": "Jayanagar Orthopaedic Centre",
+      "lat": 12.929329,
+      "lon": 77.587709
+    },
+    {
+      "name": "Shekar Hospital",
+      "lat": 12.945871,
+      "lon": 77.567519
+    },
+    {
+      "name": "Prasad Eye Hospital",
+      "lat": 12.935193,
+      "lon": 77.608682
+    },
+    {
+      "name": "NIMHANS Screening block",
+      "lat": 12.938712,
+      "lon": 77.593774
+    },
+    {
+      "name": "NIMHANS OPD",
+      "lat": 12.938806,
+      "lon": 77.594299
+    },
+    {
+      "name": "Manjunath Hospital",
+      "lat": 12.94836,
+      "lon": 77.594062
+    },
+    {
+      "name": "Karthik Hospital",
+      "lat": 12.948436,
+      "lon": 77.594259
+    },
+    {
+      "name": "Fortis Hospital",
+      "lat": 13.002241,
+      "lon": 77.549088
+    },
+    {
+      "name": "Citi Hospital",
+      "lat": 12.995651,
+      "lon": 77.55107
+    },
+    {
+      "name": "Vasan Eye Care Hospital, Rajaji Nagar",
+      "lat": 12.999522,
+      "lon": 77.550533
+    },
+    {
+      "name": "Ananya Hospital",
+      "lat": 12.999821,
+      "lon": 77.55045
+    },
+    {
+      "name": "Baptist",
+      "lat": 12.997091,
+      "lon": 77.571977
+    },
+    {
+      "name": "Sri Maruthi hospital, Sheshadripuram",
+      "lat": 12.992644,
+      "lon": 77.574205
+    },
+    {
+      "name": "Kottakkal Arya Vaidya Sala",
+      "lat": 12.941106,
+      "lon": 77.585059
+    },
+    {
+      "name": "Cloud Nine Hospital",
+      "lat": 13.007874,
+      "lon": 77.562532
+    },
+    {
+      "name": "Nayak Hospital, Gayathri Nagar",
+      "lat": 12.999386,
+      "lon": 77.56064
+    },
+    {
+      "name": "Magnus Diagnostic Lab",
+      "lat": 12.934919,
+      "lon": 77.630502
+    },
+    {
+      "name": "United Medical lab",
+      "lat": 13.000768,
+      "lon": 77.61329
+    },
+    {
+      "name": "Pragathi Ayurvedic Center",
+      "lat": 12.98437,
+      "lon": 77.555666
+    },
+    {
+      "name": "Motherhood Hospital(Unit Of Rhea Healthcare Pvt Ltd)",
+      "lat": 12.978441,
+      "lon": 77.637585
+    },
+    {
+      "name": "Respiratory and womens health clinic.",
+      "lat": 12.976264,
+      "lon": 77.637653
+    },
+    {
+      "name": "Rashmi Hospital",
+      "lat": 12.976695,
+      "lon": 77.636228
+    },
+    {
+      "name": "Netradama Eye Hospital",
+      "lat": 12.973484,
+      "lon": 77.635728
+    },
+    {
+      "name": "Sree Venkateshwara Speciality Hospital",
+      "lat": 12.942525,
+      "lon": 77.60253
+    },
+    {
+      "name": "Leela Hospital and Diagnostic Center",
+      "lat": 13.000267,
+      "lon": 77.569489
+    },
+    {
+      "name": "Dr. Rajkumar Blood Bank",
+      "lat": 12.968031,
+      "lon": 77.587822
+    },
+    {
+      "name": "ALDOS Medical Service Pvt LTD",
+      "lat": 12.982667,
+      "lon": 77.638104
+    },
+    {
+      "name": "Krishna Nursing Home",
+      "lat": 12.947422,
+      "lon": 77.598692
+    },
+    {
+      "name": "Shifa Hospital, Bengaluru Urban",
+      "lat": 12.990011,
+      "lon": 77.598811
+    },
+    {
+      "name": "HCG Cancer Hospital",
+      "lat": 12.960316,
+      "lon": 77.593049
+    },
+    {
+      "name": "Health Care Global",
+      "lat": 12.958476,
+      "lon": 77.591928
+    },
+    {
+      "name": "Gulecha Dental Care",
+      "lat": 12.929242,
+      "lon": 77.589362
+    },
+    {
+      "name": "Dianova Diabetes Center and Hospital",
+      "lat": 13.014761,
+      "lon": 77.633546
+    },
+    {
+      "name": "Ameena Medical centre",
+      "lat": 12.977708,
+      "lon": 77.632341
+    },
+    {
+      "name": "Dr.Agarwal Eye & Dental Hospital",
+      "lat": 12.970036,
+      "lon": 77.636244
+    },
+    {
+      "name": "Sagar Chandramma Hospitals",
+      "lat": 12.948553,
+      "lon": 77.574825
+    },
+    {
+      "name": "Apollo Cradle",
+      "lat": 12.93681,
+      "lon": 77.620634
+    },
+    {
+      "name": "Shiva Kumaraswamy Building",
+      "lat": 12.971705,
+      "lon": 77.549372
+    },
+    {
+      "name": "Sarvodaya Hospital",
+      "lat": 12.939094,
+      "lon": 77.561906
+    },
+    {
+      "name": "Indianova Healthcare Pvt Ltd",
+      "lat": 12.970358,
+      "lon": 77.63022
+    },
+    {
+      "name": "Dr Solankis Eye Hospital",
+      "lat": 12.995163,
+      "lon": 77.573814
+    },
+    {
+      "name": "Sri Sanjeevini Cold Laser Therapy",
+      "lat": 13.005392,
+      "lon": 77.571335
+    },
+    {
+      "name": "Medic Star Hospital",
+      "lat": 12.987687,
+      "lon": 77.60931
+    },
+    {
+      "name": "Hsis Gosha Hospital",
+      "lat": 12.985698,
+      "lon": 77.605858
+    },
+    {
+      "name": "Santosh Hospital",
+      "lat": 12.995941,
+      "lon": 77.608257
+    },
+    {
+      "name": "Hospital",
+      "lat": 12.991412,
+      "lon": 77.611733
+    },
+    {
+      "name": "H B S Hospital",
+      "lat": 12.989194,
+      "lon": 77.603786
+    },
+    {
+      "name": "St. Martha's Heart Centre",
+      "lat": 12.970544,
+      "lon": 77.583477
+    },
+    {
+      "name": "Desai Nursing Home",
+      "lat": 12.986374,
+      "lon": 77.579315
+    },
+    {
+      "name": "Fortis Hospital",
+      "lat": 12.988165,
+      "lon": 77.554818
+    },
+    {
+      "name": "Fj Merrit Hydrotherapy And Wellness",
+      "lat": 12.934422,
+      "lon": 77.629979
+    },
+    {
+      "name": "Ayur jagruti",
+      "lat": 12.966725,
+      "lon": 77.637829
+    },
+    {
+      "name": "\" NRS Medical & Dental Specialists Centre\"",
+      "lat": 12.937836,
+      "lon": 77.557333
+    },
+    {
+      "name": "Chiranjeevi Hospital & Maternity Home",
+      "lat": 12.938699,
+      "lon": 77.551839
+    },
+    {
+      "name": "Vinayaka Hospital, Hanumantha Nagar",
+      "lat": 12.937375,
+      "lon": 77.549478
+    },
+    {
+      "name": "Meenakshi Hospital",
+      "lat": 12.942072,
+      "lon": 77.553698
+    },
+    {
+      "name": "Medi-Tech Multi Speciality Hospital",
+      "lat": 12.940867,
+      "lon": 77.560366
+    },
+    {
+      "name": "Kusuma Hospital",
+      "lat": 12.942012,
+      "lon": 77.550692
+    },
+    {
+      "name": "Ring Road Hospital",
+      "lat": 12.927455,
+      "lon": 77.551629
+    },
+    {
+      "name": "Ayushman Ayurvedic therapy centre",
+      "lat": 12.994616,
+      "lon": 77.602387
+    },
+    {
+      "name": "The Family Doctor Malleswaram",
+      "lat": 13.002969,
+      "lon": 77.552667
+    },
+    {
+      "name": "Acura Speciality Hospital",
+      "lat": 12.935321,
+      "lon": 77.62055
+    },
+    {
+      "name": "The Homoeo World",
+      "lat": 12.99472,
+      "lon": 77.571588
+    },
+    {
+      "name": "Oxford Hospital",
+      "lat": 12.93121,
+      "lon": 77.575691
+    },
+    {
+      "name": "Vijay Diagnostic Centre",
+      "lat": 12.945875,
+      "lon": 77.587776
+    },
+    {
+      "name": "Tamara Hospital & IVF Centre",
+      "lat": 13.00445,
+      "lon": 77.553076
+    },
+    {
+      "name": "Ramana Rao's clinic",
+      "lat": 13.013083,
+      "lon": 77.576145
+    },
+    {
+      "name": "Government Maternity Home",
+      "lat": 12.99834,
+      "lon": 77.620093
+    },
+    {
+      "name": "Lucid Medical Diagnostics",
+      "lat": 12.930688,
+      "lon": 77.579454
+    },
+    {
+      "name": "Cauvery Orthopaedic Centre",
+      "lat": 12.998489,
+      "lon": 77.550422
+    },
+    {
+      "name": "Nethradhama Superspeciality Eye Hospital, Rajajinagar",
+      "lat": 12.997613,
+      "lon": 77.550942
+    },
+    {
+      "name": "NIMHANS - Ashwini Block",
+      "lat": 12.939759,
+      "lon": 77.59445
+    },
+    {
+      "name": "National Institute of Mental Health and Neuro Sciences",
+      "lat": 12.940067,
+      "lon": 77.59316
+    },
+    {
+      "name": "NBRC(National Brain Research Center)",
+      "lat": 12.940428,
+      "lon": 77.598841
+    },
+    {
+      "name": "Cambridge Hospital",
+      "lat": 12.971624,
+      "lon": 77.627383
+    },
+    {
+      "name": "Respigen healthcare",
+      "lat": 12.955536,
+      "lon": 77.591835
+    },
+    {
+      "name": "Doctor's diagnostics Centre",
+      "lat": 13.014746,
+      "lon": 77.635788
+    },
+    {
+      "name": "Hosmat Hospital",
+      "lat": 13.008,
+      "lon": 77.583748
+    },
+    {
+      "name": "Altius Hospital",
+      "lat": 12.984954,
+      "lon": 77.556922
+    },
+    {
+      "name": "Bangalore Diabetes Hospital",
+      "lat": 12.991841,
+      "lon": 77.596853
+    },
+    {
+      "name": "NU Hospitals",
+      "lat": 13.011845,
+      "lon": 77.552606
+    },
+    {
+      "name": "V. S. Achar Multispeciality Hospital",
+      "lat": 12.947209,
+      "lon": 77.596691
+    },
+    {
+      "name": "Nature Cure Hospital",
+      "lat": 12.933223,
+      "lon": 77.584263
+    },
+    {
+      "name": "Government Hospital",
+      "lat": 12.966103,
+      "lon": 77.554965
+    },
+    {
+      "name": "Emergency Block , NIMHANS",
+      "lat": 12.940385,
+      "lon": 77.594539
+    },
+    {
+      "name": "Sri Shankara Cancer Hospital And Research Centre (A Service Unit Of Sscf)",
+      "lat": 12.954262,
+      "lon": 77.570947
+    },
+    {
+      "name": "Lakeside Medical Centre and Hospital",
+      "lat": 12.987863,
+      "lon": 77.617743
+    },
+    {
+      "name": "Aparna Hospital",
+      "lat": 12.936209,
+      "lon": 77.616947
+    },
+    {
+      "name": "Apollo Spectra Hospitals",
+      "lat": 12.933817,
+      "lon": 77.620161
+    },
+    {
+      "name": "Shiva Vision Care",
+      "lat": 12.936653,
+      "lon": 77.627713
+    },
+    {
+      "name": "Sujatha Hospital",
+      "lat": 12.978129,
+      "lon": 77.637239
+    },
+    {
+      "name": "The Eye Surgical Centre",
+      "lat": 12.982195,
+      "lon": 77.549314
+    },
+    {
+      "name": "Dr. Agrawal's Eye Hospital",
+      "lat": 12.999898,
+      "lon": 77.550112
+    },
+    {
+      "name": "Balaji Hospital and Gastroenterology Center",
+      "lat": 12.937609,
+      "lon": 77.566643
+    },
+    {
+      "name": "Dr. B. Venkatasubbarao Memorial Hospital",
+      "lat": 12.998198,
+      "lon": 77.568151
+    },
+    {
+      "name": "South City Hospital, Bengaluru Urban",
+      "lat": 12.949775,
+      "lon": 77.580278
+    },
+    {
+      "name": "Jupiter Hospital And Institute Of Vascular Surgery",
+      "lat": 12.999846,
+      "lon": 77.566365
+    },
+    {
+      "name": "Radha Maternity and Surgical Hospital",
+      "lat": 12.969044,
+      "lon": 77.568854
+    },
+    {
+      "name": "Hitech Kidney Stone Hospital, Bengaluru Urban",
+      "lat": 12.98781,
+      "lon": 77.580983
+    },
+    {
+      "name": "Sri Dhavantari Ayurveda Hoapital",
+      "lat": 12.982219,
+      "lon": 77.559937
+    },
+    {
+      "name": "Vaidyam Hospital",
+      "lat": 12.984551,
+      "lon": 77.552832
+    },
+    {
+      "name": "Suresh Hospital - Bangalore",
+      "lat": 12.989774,
+      "lon": 77.555101
+    },
+    {
+      "name": "Lakshmi Maternity Home",
+      "lat": 13.005823,
+      "lon": 77.569451
+    },
+    {
+      "name": "Manjunatha Maternity Home and Surgical Centre",
+      "lat": 13.007727,
+      "lon": 77.569699
+    },
+    {
+      "name": "Samprathi Eye Hospital And Squint Centre",
+      "lat": 12.993281,
+      "lon": 77.580691
+    },
+    {
+      "name": "ChanRe Rheumatology and Immunology Center and Research",
+      "lat": 12.999208,
+      "lon": 77.550269
+    },
+    {
+      "name": "Malleswaram Eye Day Care Hospital - Bengalore",
+      "lat": 12.996668,
+      "lon": 77.571604
+    },
+    {
+      "name": "Mahaveer Eye Hospital Private Limited",
+      "lat": 12.993355,
+      "lon": 77.572959
+    },
+    {
+      "name": "Bilva Hospital",
+      "lat": 12.998983,
+      "lon": 77.580202
+    },
+    {
+      "name": "Nova Specialty Surgery Center, Koramangala",
+      "lat": 12.93391,
+      "lon": 77.620208
+    },
+    {
+      "name": "Amar Hospital",
+      "lat": 12.971182,
+      "lon": 77.578123
+    },
+    {
+      "name": "Retina Institute Of Karnataka",
+      "lat": 12.95727,
+      "lon": 77.564083
+    },
+    {
+      "name": "The Venlakh Hospital",
+      "lat": 12.957298,
+      "lon": 77.564452
+    },
+    {
+      "name": "Vishwabharathi Hospital Pvt. Ltd",
+      "lat": 12.94067,
+      "lon": 77.56446
+    },
+    {
+      "name": "Sunetra Eye Hospital, Bengaluru Urban",
+      "lat": 12.940455,
+      "lon": 77.557849
+    },
+    {
+      "name": "Saraswathi Hospital",
+      "lat": 12.927638,
+      "lon": 77.568896
+    },
+    {
+      "name": "National Institute of Mental Health and Neuro Sciences",
+      "lat": 12.938632,
+      "lon": 77.59441
+    },
+    {
+      "name": "K C Raju Multi Speciality Hospital",
+      "lat": 13.009083,
+      "lon": 77.623559
+    },
+    {
+      "name": "Ring Road Hospital",
+      "lat": 12.927866,
+      "lon": 77.55193
+    },
+    {
+      "name": "HCG",
+      "lat": 12.960531,
+      "lon": 77.592659
+    },
+    {
+      "name": "Supriya Hospital, Bengaluru Urban",
+      "lat": 12.992904,
+      "lon": 77.558802
+    },
+    {
+      "name": "Devi Eye Hospital",
+      "lat": 12.941211,
+      "lon": 77.623899
+    },
+    {
+      "name": "Kalasa Maternity Home",
+      "lat": 12.954821,
+      "lon": 77.567258
+    },
+    {
+      "name": "Sidvin Hospital Pvt Ltd",
+      "lat": 12.982442,
+      "lon": 77.549368
+    },
+    {
+      "name": "HCG, Koramangala",
+      "lat": 12.934328,
+      "lon": 77.622885
+    },
+    {
+      "name": "Place Guttahalli Maternity Home",
+      "lat": 12.998824,
+      "lon": 77.581989
+    },
+    {
+      "name": "Phoenix Hospital, Bengaluru Urban",
+      "lat": 12.960803,
+      "lon": 77.591172
+    },
+    {
+      "name": "Kims Hospital and Research Centre",
+      "lat": 12.956302,
+      "lon": 77.574787
+    },
+    {
+      "name": "Karthik Hospital, Bengaluru Urban",
+      "lat": 12.948941,
+      "lon": 77.594993
+    },
+    {
+      "name": "Bangalore Kidney Stones Hospital",
+      "lat": 12.967021,
+      "lon": 77.589267
+    },
+    {
+      "name": "Mediscope Hospital Private Limited",
+      "lat": 12.999447,
+      "lon": 77.616258
+    },
+    {
+      "name": "Manjushree Speciality Hospital",
+      "lat": 12.982584,
+      "lon": 77.612493
+    },
+    {
+      "name": "Popular Hospital",
+      "lat": 12.951485,
+      "lon": 77.570356
+    },
+    {
+      "name": "Gavipuramguttahalli Maternity Home",
+      "lat": 12.952651,
+      "lon": 77.554863
+    },
+    {
+      "name": "Spine Care And Ortho Care Hospital",
+      "lat": 12.974513,
+      "lon": 77.549388
+    },
+    {
+      "name": "Sadhana Eye Hospital, Bengaluru Urban",
+      "lat": 12.970023,
+      "lon": 77.630799
+    },
+    {
+      "name": "Av Hospital",
+      "lat": 12.938853,
+      "lon": 77.57861
+    },
+    {
+      "name": "Balaji Hospital, K.H. Ranganath Colony",
+      "lat": 12.963251,
+      "lon": 77.56029
+    },
+    {
+      "name": "Bhavatprabhu Hospitals Pvt Limited",
+      "lat": 12.967061,
+      "lon": 77.590316
+    },
+    {
+      "name": "Nikad Ortho Centre",
+      "lat": 12.975802,
+      "lon": 77.618481
+    },
+    {
+      "name": "Azad Nagar Maternity Home",
+      "lat": 12.955964,
+      "lon": 77.548564
+    },
+    {
+      "name": "Gunasheela Surgical and Maternity Hospital",
+      "lat": 12.940301,
+      "lon": 77.57647
+    },
+    {
+      "name": "Vasan Eye Care Hospital, Jayanagar",
+      "lat": 12.929201,
+      "lon": 77.581981
+    },
+    {
+      "name": "Hi Tech Kidney Stone Hospital",
+      "lat": 12.927139,
+      "lon": 77.579028
+    },
+    {
+      "name": "R K Hospital, Bengaluru Urban",
+      "lat": 13.013812,
+      "lon": 77.635473
+    },
+    {
+      "name": "Prasad Eye Hospital, Bengaluru Urban",
+      "lat": 12.93567,
+      "lon": 77.60799
+    },
+    {
+      "name": "Jyothi The Lasik Vision Centre",
+      "lat": 12.949611,
+      "lon": 77.579079
+    },
+    {
+      "name": "Bengaluru West Lions Hospital",
+      "lat": 12.956304,
+      "lon": 77.5831
+    },
+    {
+      "name": "Abhinava Eye Hospital",
+      "lat": 12.955018,
+      "lon": 77.56839
+    },
+    {
+      "name": "Punarjyoti Eye Hospital, Bengaluru Urban",
+      "lat": 12.96853,
+      "lon": 77.584396
+    },
+    {
+      "name": "Sundar Hospital",
+      "lat": 13.008017,
+      "lon": 77.622148
+    },
+    {
+      "name": "V Care Hospital",
+      "lat": 13.015884,
+      "lon": 77.597347
+    },
+    {
+      "name": "Sreeniwasa Hospital",
+      "lat": 12.973271,
+      "lon": 77.572536
+    },
+    {
+      "name": "Magadi Road Maternity Home",
+      "lat": 12.974125,
+      "lon": 77.561823
+    },
+    {
+      "name": "Dr Zamindar's Micro Surgical Eye Centre",
+      "lat": 13.002198,
+      "lon": 77.632902
+    },
+    {
+      "name": "Health Cottage Hospital",
+      "lat": 12.970914,
+      "lon": 77.632112
+    },
+    {
+      "name": "Dr.Agarwal Eye Hospital, Frazer Town, Bangalore",
+      "lat": 12.99602,
+      "lon": 77.612841
+    },
+    {
+      "name": "Republic Hospital",
+      "lat": 12.964162,
+      "lon": 77.598225
+    },
+    {
+      "name": "Sri Ram Speciality Hospital",
+      "lat": 12.954378,
+      "lon": 77.620976
+    },
+    {
+      "name": "Zion Hospital And Research Centre Pvt.Ltd.",
+      "lat": 13.014967,
+      "lon": 77.635496
+    },
+    {
+      "name": "Institute Of Nephro Urology hospital",
+      "lat": 12.961953,
+      "lon": 77.572856
+    },
+    {
+      "name": "Well Spring hospital",
+      "lat": 12.942568,
+      "lon": 77.622435
+    },
+    {
+      "name": "Aaroyha Mandir Hospital",
+      "lat": 13.010504,
+      "lon": 77.550245
+    },
+    {
+      "name": "Pd Hinduja Sindhi Hospital",
+      "lat": 12.964636,
+      "lon": 77.592651
+    },
+    {
+      "name": "Rotary Eye Hospital (A Unit Of Bangalore North Rotary Trust)",
+      "lat": 12.981723,
+      "lon": 77.554936
+    },
+    {
+      "name": "Get Well Hospital",
+      "lat": 12.952662,
+      "lon": 77.61503
+    },
+    {
+      "name": "Venkateswara Hospital, Bengaluru Urban",
+      "lat": 12.954346,
+      "lon": 77.575565
+    },
+    {
+      "name": "Santhigiri Ayurveda and Siddha Hospital, Bengaluru Urban",
+      "lat": 12.943901,
+      "lon": 77.606586
+    },
+    {
+      "name": "K.C. General Hospital",
+      "lat": 12.993382,
+      "lon": 77.569417
+    },
+    {
+      "name": "Focus Diagnostic Center",
+      "lat": 12.987063,
+      "lon": 77.549951
+    },
+    {
+      "name": "Sai Baba Hospital",
+      "lat": 12.969819,
+      "lon": 77.631747
+    },
+    {
+      "name": "G.R. Hospital",
+      "lat": 12.98023,
+      "lon": 77.554882
+    },
+    {
+      "name": "Abhinav Hospital",
+      "lat": 12.975749,
+      "lon": 77.553782
+    },
+    {
+      "name": "ESIC Hospital",
+      "lat": 12.969301,
+      "lon": 77.631754
+    },
+    {
+      "name": "Swasthya Hospitals",
+      "lat": 12.954498,
+      "lon": 77.640157
+    },
+    {
+      "name": "Vinayaka Hospital",
+      "lat": 12.93753,
+      "lon": 77.549675
+    },
+    {
+      "name": "Unani Hospital",
+      "lat": 12.963318,
+      "lon": 77.579014
+    },
+    {
+      "name": "Rahul Maternity & Child Health Centre",
+      "lat": 12.959623,
+      "lon": 77.614682
+    },
+    {
+      "name": "Bangaluru Unani Hospital",
+      "lat": 12.94052,
+      "lon": 77.579439
+    },
+    {
+      "name": "Medcare Hospital",
+      "lat": 12.953049,
+      "lon": 77.574203
+    },
+    {
+      "name": "Sumanjara Hospital",
+      "lat": 12.941744,
+      "lon": 77.560178
+    },
+    {
+      "name": "Corporation Hospital",
+      "lat": 12.961345,
+      "lon": 77.560893
+    },
+    {
+      "name": "Mitralaya Hospital",
+      "lat": 12.945591,
+      "lon": 77.571286
+    },
+    {
+      "name": "People Tree Hospitals",
+      "lat": 12.942076,
+      "lon": 77.553598
+    },
+    {
+      "name": "Apollo Specialty Hospital",
+      "lat": 12.936459,
+      "lon": 77.584422
+    },
+    {
+      "name": "Government Hospital",
+      "lat": 12.960949,
+      "lon": 77.561394
+    },
+    {
+      "name": "Verna Hospital",
+      "lat": 12.940404,
+      "lon": 77.558036
+    },
+    {
+      "name": "Government Hospital, Banglore",
+      "lat": 12.958746,
+      "lon": 77.557346
+    },
+    {
+      "name": "Royan Maternity & Child Welfare Centre",
+      "lat": 12.960311,
+      "lon": 77.568274
+    },
+    {
+      "name": "Alisa Eye Hospital",
+      "lat": 12.96523,
+      "lon": 77.610433
+    },
+    {
+      "name": "Shekhar Hospital",
+      "lat": 12.945944,
+      "lon": 77.567404
+    },
+    {
+      "name": "Government Hospital",
+      "lat": 12.949104,
+      "lon": 77.563226
+    },
+    {
+      "name": "Jeevini Sarvodaya Hospital",
+      "lat": 12.941588,
+      "lon": 77.564192
+    },
+    {
+      "name": "Mahaveer Ortho Care Speciality Centre",
+      "lat": 12.956968,
+      "lon": 77.569504
+    },
+    {
+      "name": "Raghavendra Hospital",
+      "lat": 12.938787,
+      "lon": 77.554296
+    },
+    {
+      "name": "Apaara Multi Speciality",
+      "lat": 12.938453,
+      "lon": 77.551329
+    },
+    {
+      "name": "Khincha Orthopaedic Centre",
+      "lat": 12.939882,
+      "lon": 77.573989
+    },
+    {
+      "name": "Parameshwari Hospital",
+      "lat": 12.948971,
+      "lon": 77.563543
+    },
+    {
+      "name": "Drishti Nethralaya",
+      "lat": 12.942254,
+      "lon": 77.550633
+    },
+    {
+      "name": "Furtde Hospital",
+      "lat": 12.965465,
+      "lon": 77.589476
+    },
+    {
+      "name": "Manavarthapet Pregnancy Hospital",
+      "lat": 12.970255,
+      "lon": 77.573457
+    },
+    {
+      "name": "Trinity Hospital and Heart Foundation",
+      "lat": 12.9435,
+      "lon": 77.579658
+    },
+    {
+      "name": "Spandana Heart Centre",
+      "lat": 12.957222,
+      "lon": 77.566486
+    },
+    {
+      "name": "Shas Eye Care",
+      "lat": 12.960296,
+      "lon": 77.614714
+    },
+    {
+      "name": "Matha Pitha Hospital",
+      "lat": 12.942028,
+      "lon": 77.575634
+    },
+    {
+      "name": "ESI Hospital",
+      "lat": 12.972126,
+      "lon": 77.573351
+    },
+    {
+      "name": "Herige Hospital",
+      "lat": 12.960972,
+      "lon": 77.56097
+    },
+    {
+      "name": "Gleneagles Global Hospitals",
+      "lat": 12.96545,
+      "lon": 77.599904
+    },
+    {
+      "name": "Punarjyoti Eye Hospital",
+      "lat": 12.96589,
+      "lon": 77.589928
+    },
+    {
+      "name": "Swastik Eye Hospital",
+      "lat": 12.947965,
+      "lon": 77.569639
+    },
+    {
+      "name": "Dave Gray Hospital",
+      "lat": 12.945829,
+      "lon": 77.579902
+    },
+    {
+      "name": "Dr. Rudrappa's Hospital",
+      "lat": 12.96503,
+      "lon": 77.595495
+    },
+    {
+      "name": "Bharathi Hospitals",
+      "lat": 12.93341,
+      "lon": 77.562235
+    },
+    {
+      "name": "Nayanalaya Super Speciality Eye Care Centre",
+      "lat": 13.006795,
+      "lon": 77.571159
+    },
+    {
+      "name": "Srinidhi Health Centre",
+      "lat": 13.005821,
+      "lon": 77.572575
+    },
+    {
+      "name": "Orthopedic & Eye Care Center",
+      "lat": 13.005493,
+      "lon": 77.571952
+    },
+    {
+      "name": "ESI Hospital",
+      "lat": 13.004596,
+      "lon": 77.554003
+    },
+    {
+      "name": "Ramani Orthopaedic Hospital",
+      "lat": 13.004431,
+      "lon": 77.578524
+    },
+    {
+      "name": "RICH CARE HOMEOPATHY",
+      "lat": 13.001546,
+      "lon": 77.572168
+    },
+    {
+      "name": "Poornayu Ayurveda Hospital",
+      "lat": 12.998238,
+      "lon": 77.551173
+    },
+    {
+      "name": "Appllo Diagnostic",
+      "lat": 12.998106,
+      "lon": 77.600813
+    },
+    {
+      "name": "Supra Diagnostics Spine Care And Ortho Care Hospital",
+      "lat": 12.997,
+      "lon": 77.573004
+    },
+    {
+      "name": "K.C.General Hospital",
+      "lat": 12.996024,
+      "lon": 77.569371
+    },
+    {
+      "name": "ESIC Model Hospital",
+      "lat": 12.991692,
+      "lon": 77.553901
+    },
+    {
+      "name": "Government Hospital",
+      "lat": 12.990505,
+      "lon": 77.556635
+    },
+    {
+      "name": "Esi Hospital Bangalore",
+      "lat": 12.990498,
+      "lon": 77.553092
+    },
+    {
+      "name": "Government Hospital",
+      "lat": 12.984496,
+      "lon": 77.55518
+    },
+    {
+      "name": "St. Johns hospital Emergency ward",
+      "lat": 12.930594,
+      "lon": 77.618616
+    },
+    {
+      "name": "Narayan Multispeciality clinic",
+      "lat": 12.928844,
+      "lon": 77.58287
+    },
+    {
+      "name": "clinic",
+      "lat": 12.939528,
+      "lon": 77.586437
+    },
+    {
+      "name": "Kidwai Cancer Institute Radiation Block",
+      "lat": 12.935597,
+      "lon": 77.597157
+    },
+    {
+      "name": "NIMHANS Department Of Psychiatric and Neuro Rehabilitation",
+      "lat": 12.940052,
+      "lon": 77.595477
+    },
+    {
+      "name": "Nimhans Mr-pet Center",
+      "lat": 12.93965,
+      "lon": 77.596783
+    },
+    {
+      "name": "NIMHANS Physiotherapy Center",
+      "lat": 12.940204,
+      "lon": 77.595472
+    },
+    {
+      "name": "Span Health Center",
+      "lat": 12.977445,
+      "lon": 77.62713
+    },
+    {
+      "name": "Uvin Care Hospital",
+      "lat": 12.977835,
+      "lon": 77.628284
+    },
+    {
+      "name": "Aspire Hospital",
+      "lat": 12.997168,
+      "lon": 77.614588
+    },
+    {
+      "name": "PMC Hospital",
+      "lat": 13.006505,
+      "lon": 77.554501
+    },
+    {
+      "name": "New Varalakshmi Hospital",
+      "lat": 12.998838,
+      "lon": 77.555096
+    },
+    {
+      "name": "Apollo Cradle Children's Hospital",
+      "lat": 13.002768,
+      "lon": 77.553629
+    },
+    {
+      "name": "Netradhama",
+      "lat": 12.99743,
+      "lon": 77.551029
+    },
+    {
+      "name": "St Philomenas Hospital OPD Building",
+      "lat": 12.965851,
+      "lon": 77.610901
+    },
+    {
+      "name": "Gawai Hospital",
+      "lat": 12.996274,
+      "lon": 77.607569
+    },
+    {
+      "name": "Beams Hospitals Private Limited",
+      "lat": 12.934228,
+      "lon": 77.629632
+    },
+    {
+      "name": "H Siddiah Referral Hospital",
+      "lat": 12.956906,
+      "lon": 77.58244
+    },
+    {
+      "name": "Jindal Charitable Hospital",
+      "lat": 12.993725,
+      "lon": 77.553972
+    },
+    {
+      "name": "Hosmat Hospitals",
+      "lat": 12.964473,
+      "lon": 77.614302
+    },
+    {
+      "name": "AMC Multispeciality Hospital",
+      "lat": 12.92967,
+      "lon": 77.576408
+    },
+    {
+      "name": "Proteeth Dental",
+      "lat": 12.934622,
+      "lon": 77.628467
+    },
+    {
+      "name": "Big Hospitals",
+      "lat": 12.940505,
+      "lon": 77.584868
+    },
+    {
+      "name": "Vanivilas Women and Children Hospital",
+      "lat": 12.961545,
+      "lon": 77.573669
+    },
+    {
+      "name": "Minto Eye Hospital",
+      "lat": 12.961066,
+      "lon": 77.572278
+    },
+    {
+      "name": "St.John's Medical College Hospital",
+      "lat": 12.929627,
+      "lon": 77.618621
+    },
+    {
+      "name": "Health Centre",
+      "lat": 13.015772,
+      "lon": 77.563804
+    },
+    {
+      "name": "K C General Hospital",
+      "lat": 12.995019,
+      "lon": 77.569875
+    },
+    {
+      "name": "St Marthas Hospital",
+      "lat": 12.970752,
+      "lon": 77.585892
+    },
+    {
+      "name": "Vydehi Superspeciality Hospital",
+      "lat": 12.968187,
+      "lon": 77.595065
+    },
+    {
+      "name": "Jayanagar General Hospital",
+      "lat": 12.926114,
+      "lon": 77.592541
+    },
+    {
+      "name": "Hospital Complex",
+      "lat": 12.938548,
+      "lon": 77.590443
+    },
+    {
+      "name": "Bhagwan Mahaveer Jain Hospital",
+      "lat": 12.99145,
+      "lon": 77.595289
+    },
+    {
+      "name": "Bowring and Lady Curzon Hospitals",
+      "lat": 12.983053,
+      "lon": 77.604668
+    },
+    {
+      "name": "Sir Haji Ismail Gosha Sait Hospital",
+      "lat": 12.98375,
+      "lon": 77.599775
+    },
+    {
+      "name": "Government Veterinary Hospital",
+      "lat": 12.96424,
+      "lon": 77.567696
+    },
+    {
+      "name": "Divisional Railway Hospital",
+      "lat": 12.97984,
+      "lon": 77.565095
+    },
+    {
+      "name": "ESI Hospital",
+      "lat": 12.971227,
+      "lon": 77.636742
+    },
+    {
+      "name": "Sparsh Hospital For Advanced Surgeries, Bengaluru Urban",
+      "lat": 12.983333,
+      "lon": 77.594535
+    },
+    {
+      "name": "Employees' State Insurance Corporation Model Hospital",
+      "lat": 12.990925,
+      "lon": 77.553441
+    },
+    {
+      "name": "Hosmat Hospital",
+      "lat": 12.969121,
+      "lon": 77.613356
+    },
+    {
+      "name": "Victoria Hospital",
+      "lat": 12.963496,
+      "lon": 77.573703
+    },
+    {
+      "name": "Dasappa Maternity Hospital",
+      "lat": 12.964324,
+      "lon": 77.584545
+    },
+    {
+      "name": "Kidwai Memorial Institute of Oncology",
+      "lat": 12.936426,
+      "lon": 77.598148
+    },
+    {
+      "name": "P.D. Hinduja Sindhi Hospital",
+      "lat": 12.964441,
+      "lon": 77.592675
+    },
+    {
+      "name": "Sreerampura Referal Hospital",
+      "lat": 12.990743,
+      "lon": 77.564908
+    },
+    {
+      "name": "Pro MED Hospital",
+      "lat": 12.929435,
+      "lon": 77.564005
+    },
+    {
+      "name": "Apollo Speciality Hospital",
+      "lat": 12.936288,
+      "lon": 77.58434
+    },
+    {
+      "name": "Fortis Hospitals Limited, Bengaluru Urban",
+      "lat": 12.988503,
+      "lon": 77.594536
+    },
+    {
+      "name": "Milann Fertility Center",
+      "lat": 12.978801,
+      "lon": 77.638085
+    },
+    {
+      "name": "Sanjay Gandhi Accident and Trauma Hospital",
+      "lat": 12.935669,
+      "lon": 77.593737
+    },
+    {
+      "name": "Sanjay Gandhi Accident and Trauma Hospital",
+      "lat": 12.935771,
+      "lon": 77.593943
+    },
+    {
+      "name": "Leprosy Hospital",
+      "lat": 12.974524,
+      "lon": 77.563964
+    },
+    {
+      "name": "Annasawmy Mudaliar General Hospital",
+      "lat": 12.99998,
+      "lon": 77.614499
+    },
+    {
+      "name": "Fortis La Femme Hospital",
+      "lat": 12.965745,
+      "lon": 77.609716
+    },
+    {
+      "name": "Shyamala Hospital",
+      "lat": 12.971427,
+      "lon": 77.627494
+    },
+    {
+      "name": "Abhaya Hospital",
+      "lat": 12.946274,
+      "lon": 77.594785
+    },
+    {
+      "name": "BBMP Maternity Hospital",
+      "lat": 12.94925,
+      "lon": 77.596806
+    },
+    {
+      "name": "Ramakrishna Clinic",
+      "lat": 12.978694,
+      "lon": 77.574461
+    },
+    {
+      "name": "ESI Hospital",
+      "lat": 12.927995,
+      "lon": 77.589406
+    },
+    {
+      "name": NaN,
+      "lat": 12.934673,
+      "lon": 77.628782
+    },
+    {
+      "name": "Proteeth Dental",
+      "lat": 12.934625,
+      "lon": 77.628467
+    },
+    {
+      "name": "Apollo Hospital",
+      "lat": 12.988343,
+      "lon": 77.572656
+    },
+    {
+      "name": "Prashanth Hospitals",
+      "lat": 12.939188,
+      "lon": 77.551313
+    },
+    {
+      "name": "Vagus Super Speciality Hospital",
+      "lat": 13.008477,
+      "lon": 77.568422
+    },
+    {
+      "name": "Halasuru Referal Hospital",
+      "lat": 12.973689,
+      "lon": 77.626681
+    },
+    {
+      "name": "Manipal Hospital",
+      "lat": 12.988211,
+      "lon": 77.592162
+    },
+    {
+      "name": "The Fracture and Orthopaedic Clinic",
+      "lat": 13.00817,
+      "lon": 77.563448
+    },
+    {
+      "name": "CSI Hospital",
+      "lat": 12.99128,
+      "lon": 77.601216
+    },
+    {
+      "name": "Government Hospital",
+      "lat": 12.949024,
+      "lon": 77.619925
+    },
+    {
+      "name": "Sagar Hospitals",
+      "lat": 12.927904,
+      "lon": 77.599838
+    },
+    {
+      "name": "Command Hospital (Air Force)",
+      "lat": 12.963732,
+      "lon": 77.62789
+    },
+    {
+      "name": "St. Philomena's Hospital",
+      "lat": 12.96486,
+      "lon": 77.61108
+    },
+    {
+      "name": "Government Maternity Hospital",
+      "lat": 12.937727,
+      "lon": 77.569786
+    },
+    {
+      "name": "HCG Cancer Hospital",
+      "lat": 12.963843,
+      "lon": 77.589666
+    },
+    {
+      "name": "Al-Ameen Hospital",
+      "lat": 12.989876,
+      "lon": 77.59427
+    },
+    {
+      "name": "St. Theresa's Hospital",
+      "lat": 13.006717,
+      "lon": 77.552989
+    },
+    {
+      "name": "South City Hospital",
+      "lat": 12.949652,
+      "lon": 77.580307
+    },
+    {
+      "name": "Agadi Hospital",
+      "lat": 12.949211,
+      "lon": 77.597804
+    },
+    {
+      "name": "BMS Hospital",
+      "lat": 12.941285,
+      "lon": 77.567543
+    },
+    {
+      "name": "JC Nagar Municipal Hospital",
+      "lat": 13.009941,
+      "lon": 77.594189
+    },
+    {
+      "name": "Dr. P.R. Desai Hospital Pvt Ltd",
+      "lat": 12.986356,
+      "lon": 77.579214
+    },
+    {
+      "name": "Manipal Hospital Yeshwantpur",
+      "lat": 13.014209,
+      "lon": 77.556084
+    },
+    {
+      "name": "Shifa Hospital, Bengaluru Urban",
+      "lat": 12.990025,
+      "lon": 77.598963
+    },
+    {
+      "name": "Diacon Hospital",
+      "lat": 13.003746,
+      "lon": 77.549827
+    },
+    {
+      "name": "Fortis Hospital",
+      "lat": 13.002204,
+      "lon": 77.549099
+    },
+    {
+      "name": NaN,
+      "lat": 12.984955,
+      "lon": 77.556924
+    },
+    {
+      "name": NaN,
+      "lat": 13.001119,
+      "lon": 77.563988
+    },
+    {
+      "name": "Charaka Super Speciality Hospital",
+      "lat": 12.98972,
+      "lon": 77.60227
+    },
+    {
+      "name": NaN,
+      "lat": 13.005809,
+      "lon": 77.569439
+    },
+    {
+      "name": "ESI Hospital Malleshwaram Branch",
+      "lat": 13.01512,
+      "lon": 77.560001
+    },
+    {
+      "name": "Suguna Hospital",
+      "lat": 12.988209,
+      "lon": 77.560095
+    },
+    {
+      "name": "Dr Agarwal's Eye Hospital",
+      "lat": 12.9569,
+      "lon": 77.604761
+    },
+    {
+      "name": "BBMP Hospital",
+      "lat": 12.995017,
+      "lon": 77.593772
+    },
+    {
+      "name": NaN,
+      "lat": 12.960925,
+      "lon": 77.561173
+    },
+    {
+      "name": "Brains Super Speciality Hospital",
+      "lat": 12.947812,
+      "lon": 77.592522
+    },
+    {
+      "name": "Safa Medicure Hospital",
+      "lat": 12.944739,
+      "lon": 77.596416
+    },
+    {
+      "name": "Rangadore Memorial Hospital",
+      "lat": 12.953942,
+      "lon": 77.571042
+    },
+    {
+      "name": "Trustwell Hospitals",
+      "lat": 12.960672,
+      "lon": 77.58404
+    },
+    {
+      "name": "Yadiyuru Maternity Hospital",
+      "lat": 12.927106,
+      "lon": 77.57665
+    },
+    {
+      "name": "Ayurveda Prathisthana Hospital",
+      "lat": 12.926806,
+      "lon": 77.577308
+    },
+    {
+      "name": "Vignan Hospital",
+      "lat": 12.943856,
+      "lon": 77.596916
+    }
+  ],
+  "fire_station": [
+    {
+      "name": "Bengaluru Secretariat Fire Station",
+      "lat": 12.977764,
+      "lon": 77.588805
+    },
+    {
+      "name": "Office of the Chief Fire Officer",
+      "lat": 12.972778,
+      "lon": 77.610197
+    },
+    {
+      "name": "Jayanagara Fire Station",
+      "lat": 12.933797,
+      "lon": 77.600278
+    },
+    {
+      "name": "High Grounds Fire Station",
+      "lat": 12.980618,
+      "lon": 77.579967
+    },
+    {
+      "name": "Bengaluru North Fire Station",
+      "lat": 12.962532,
+      "lon": 77.563435
+    },
+    {
+      "name": "Rajajinagar Fire Station",
+      "lat": 12.98066,
+      "lon": 77.548503
+    }
+  ],
+  "charging_station": [
+    {
+      "name": NaN,
+      "lat": 12.977583,
+      "lon": 77.638989
+    },
+    {
+      "name": NaN,
+      "lat": 12.973397,
+      "lon": 77.635756
+    },
+    {
+      "name": NaN,
+      "lat": 12.973374,
+      "lon": 77.635755
+    },
+    {
+      "name": "inGO",
+      "lat": 12.971278,
+      "lon": 77.607883
+    },
+    {
+      "name": NaN,
+      "lat": 12.976482,
+      "lon": 77.62683
+    },
+    {
+      "name": NaN,
+      "lat": 12.957683,
+      "lon": 77.568447
+    },
+    {
+      "name": "Pulse",
+      "lat": 12.980548,
+      "lon": 77.597889
+    },
+    {
+      "name": "Ola Hypercharger",
+      "lat": 12.932217,
+      "lon": 77.614272
+    },
+    {
+      "name": NaN,
+      "lat": 12.971011,
+      "lon": 77.597788
+    },
+    {
+      "name": NaN,
+      "lat": 12.973667,
+      "lon": 77.583085
+    },
+    {
+      "name": NaN,
+      "lat": 12.930195,
+      "lon": 77.61483
+    },
+    {
+      "name": NaN,
+      "lat": 12.936268,
+      "lon": 77.607688
+    },
+    {
+      "name": "Ola Hyper Charger",
+      "lat": 12.933775,
+      "lon": 77.623669
+    },
+    {
+      "name": "Battery Swap",
+      "lat": 12.928584,
+      "lon": 77.62419
+    },
+    {
+      "name": "Ather Charging Station",
+      "lat": 12.931145,
+      "lon": 77.623846
+    },
+    {
+      "name": NaN,
+      "lat": 12.977855,
+      "lon": 77.581276
+    },
+    {
+      "name": NaN,
+      "lat": 12.981076,
+      "lon": 77.59668
+    },
+    {
+      "name": "Honda e:swap",
+      "lat": 13.000014,
+      "lon": 77.549906
+    },
+    {
+      "name": NaN,
+      "lat": 12.965406,
+      "lon": 77.600247
+    },
+    {
+      "name": "Honda e:swap",
+      "lat": 12.978105,
+      "lon": 77.63891
+    },
+    {
+      "name": "Honda e:swap",
+      "lat": 12.938354,
+      "lon": 77.580216
+    },
+    {
+      "name": "Honda e:swap",
+      "lat": 12.986184,
+      "lon": 77.615689
+    }
+  ]
+}

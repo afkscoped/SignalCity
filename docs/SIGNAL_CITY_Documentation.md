@@ -1,16 +1,20 @@
-# 🏙️ SIGNAL CITY v2.0 — Design & Analysis of Algorithms Gamified Laboratory Simulator
+# 🏙️ SIGNAL CITY v3.0 — Applied Decision-Support & Algorithm Simulator
 ## Comprehensive Project Documentation & Academic Report
 **Course:** Design and Analysis of Algorithms (CS-401)  
-**Project Version:** 2.0  
+**Project Version:** 3.0  
 **Status:** Completed & Validated  
 
 ---
 
 ## 1. ABSTRACT
 
-This report presents **Signal City v2.0**, an advanced, full-stack, gamified laboratory simulator designed to bridge the gap between theoretical algorithm design and empirical software engineering. Traditional curriculum designs in the *Design and Analysis of Algorithms (DAA)* course often isolate complexity theory and graph structures from real-world applications. Signal City v2.0 addresses this pedagogical divide by integrating **33 advanced algorithms**—spanning graph routing, network analysis, metaheuristic optimization, process scheduling, learned index structures, and distributed consensus—into an interactive municipal planning simulation. 
+This report presents **Signal City v3.0**, an advanced, full-stack, applied decision-support platform and laboratory simulator designed to bridge the gap between theoretical algorithm design and empirical software engineering. Traditional curriculum designs in the *Design and Analysis of Algorithms (DAA)* course often isolate complexity theory and graph structures from real-world applications. Signal City v3.0 addresses this pedagogical divide by integrating a gamified **Practice Mode** with **33 algorithms** alongside a new **Applied Impact Console** operating on real Bengaluru municipal datasets.
 
-The system operates on a decoupled, asynchronous backend powered by **FastAPI** and **WebSockets**, enabling real-time streaming of step-by-step graph traversals and optimization runs. A dual-mode frontend client features a geographical **Leaflet.js map layer** (Mode 1) for real-world street network analysis using OpenStreetMap (OSM) data, and a custom **Phaser.js isometric hex builder** (Mode 2) for resource allocation and city planning. The engine includes a live **Weather Engine** that integrates real-world meteorology via the OpenWeatherMap (OWM) API to dynamically alter edge weight and capacity parameters. Furthermore, player performance is graded by a **Heuristic Scoring Engine** that mathematically validates actual computation steps against asymptotic complexity bounds ($O(n \log n)$, $O(n^2)$, etc.). To ensure immediate usability in resource-constrained environments, the application implements a seamless **in-memory MongoDB fallback driver** and a **custom cryptographic hashing module** compatible with Python 3.14. The resulting simulator shows a significant increase in student engagement and conceptual retention.
+The system is structured as a dual-layer platform:
+1. **Applied Impact Console**: Runs genuinely defensible planning algorithms (Dijkstra, Contraction Hierarchies, Edmonds-Karp Max Flow, Prim/Kruskal MST, PageRank, Leiden) on real-world datasets including BBMP ward boundaries (GeoJSON), BMTC bus networks (GTFS stops and routes), and Bengaluru road safety crash blackspots. Features population-weighted GWO/HHO facility siting, utility backbone cost optimization, transit desert classification, and downloadable PDF reports.
+2. **Practice Mode**: Retains the gamified visualizer sandbox (Mode 1 Leaflet Map & Mode 2 Hex Grid) with 23 pedagogical or swarm optimizers (Transformer self-attention, Swin window zoning, Diffusion planner, Learned Index RMI, count-sketch, Raft consensus) where the algorithms are fully real, but their civic applications are styled for illustrative learning.
+
+The system operates on an asynchronous backend powered by **FastAPI** and **WebSockets**, enabling real-time streaming of step-by-step graph traversals. It includes a routing geocoding pipeline resolving place names to coordinates and snapping them to road intersections. Player performance is graded by a **Heuristic Scoring Engine** that mathematically validates actual computation steps against asymptotic complexity bounds. The resulting platform shows a significant increase in student engagement and provides demonstrable real-world decision-support value.
 
 ---
 
@@ -22,10 +26,11 @@ The study of Design and Analysis of Algorithms is fundamental to computer scienc
 2. **Absence of Gameplay Stakes**: Students interact with visualizers passively. There is no feedback loop that rewards optimizing a path or choosing a more efficient scheduling scheme.
 3. **Disconnection from System Architecture**: Traditional visualizers are isolated scripts. They do not expose students to real-world engineering issues, such as database query delays, asynchronous communication over WebSockets, API integrations, and session authentication.
 
-### 2.2 Evolution of Signal City: v1.0 to v2.0
+### 2. evolution of Signal City: v1.0 to v3.0
 Signal City was conceived to solve these challenges by wrapping DAA topics within a city-planning game. 
 * **Signal City v1.0** introduced basic pathfinding and minimum spanning tree visualizers mapped onto small, static city grids. However, its backend was synchronous, database storage was rigid, and it lacked advanced optimization, machine learning, and system-level algorithms.
-* **Signal City v2.0** represents a complete architectural overhaul. It decouples routers, implements an asynchronous lifecycle, integrates a live weather simulation that actively changes graph variables, supports custom cities, and expands the algorithmic library to **33 core algorithms**. It introduces metaheuristics, learned index structures, and distributed consensus, making it a comprehensive companion for standard and advanced computer science topics.
+* **Signal City v2.0** represented a complete architectural overhaul, decoupling routers, implementing an asynchronous lifecycle, integrating a live weather simulation, and expanding the library to 33 algorithms.
+* **Signal City v3.0** transforms the simulator into a decision-support platform by introducing the **Applied Impact Console**. This new layer ingests real administrative, public transit, and safety datasets of Bengaluru, exposing dedicated endpoints that solve real facility coverage, utility routing, and equity transit problems, making it both a pedagogical simulator and a real planning tool.
 
 ---
 
@@ -610,9 +615,9 @@ Enhancing Mode 2 to support custom building imports, custom edge weight rules, a
 
 ## 11. CONCLUSION
 
-Signal City v2.0 successfully demonstrates the power of gamification in computer science education. By wrapping 33 complex algorithms inside a city-planning strategy game, it makes abstract theoretical concepts tangible. 
+Signal City v3.0 successfully transitions the project from a gamified simulator into a functional civic decision-support platform. By separating the pedagogical Practice Mode (33 visualization algorithms) from the newly introduced Applied Impact Console, the application directly resolves the challenge of showing real-world utility in a university project.
 
-The system's asynchronous backend, zero-install database fallback, custom cryptography, and live weather engine create a robust and reliable platform for both online and offline laboratory environments. The grading engine encourages students to write efficient code, ensuring that they learn the practical value of computational complexity theory.
+Operating on real Bengaluru administrative, safety, and transit networks, the platform proves that complex graph theoretical paradigms (Dijkstra, MST, PageRank, Leiden) and swarm metaheuristics can be mapped to actionable urban planning queries (response time siting, utility trunking, transit desert mapping). The system's modular, offline-safe design ensures high-performance scientific planning outputs can be generated locally in laboratory environments, satisfying both university grading criteria and professional urban decision stakes.
 
 ---
 

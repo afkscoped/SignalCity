@@ -2,7 +2,7 @@ import asyncio
 import websockets
 import json
 
-async def test():
+async def run_websocket_test():
     async with websockets.connect("ws://127.0.0.1:8000/ws/algorithm") as ws:
         await ws.send(json.dumps({
             "action": "run",
@@ -17,4 +17,5 @@ async def test():
         await ws.close()
         print("WebSocket test PASSED!")
 
-asyncio.run(test())
+if __name__ == "__main__":
+    asyncio.run(run_websocket_test())

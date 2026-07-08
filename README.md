@@ -4,11 +4,22 @@
 
 ## 🎮 Features
 
-- **10 Algorithms** visualized step-by-step in 3D:
+- **10 Genuinely Defensible Applied Algorithms** for real-world decision support:
   - Prim's MST, Kruskal's MST, Dijkstra's Shortest Path
   - Edmonds-Karp Max Flow, EDF/SJF/FCFS/Round Robin Scheduling
   - Leiden Community Detection, Contraction Hierarchies, k-Median Facility Location, PageRank Centrality
-- **Real city data** from OpenStreetMap (Bengaluru, London, Tokyo, NYC, Sydney)
+- **23 Pedagogical & SWARM Optimizers** (Practice Mode):
+  - GWO, ALO, HHO, COA, WOA, RUN, PTBO, MPA, MFO, GOA, AO, DO, SSA, SMA, AOA, GTO, Transformer Attention, Swin Zoning, Diffusion Planner, Learned Index RMI, XGBoost Split, Count-Sketch, Graham Scan.
+- **Bengaluru Civic Dataset Ingestion (v3.0)**:
+  - BBMP Ward Boundaries (GeoJSON spatial zones)
+  - BMTC Bus Network (GTFS stops and routes)
+  - Bengaluru Road Crash Blackspots (BTP accident statistics)
+  - Civic Facility POIs (hospitals, fire stations, EV charging points via OSMnx)
+- **Applied Impact Console** — a dedicated planner tab next to gamified modes with:
+  - Population-weighted facility siting optimization (GWO/HHO)
+  - Quantified backbone connection length & INR cost calculator (MST)
+  - Transit desert analysis (PageRank & Leiden on BMTC network)
+  - Downloadable/Printable PDF/HTML Decision Reports
 - **RPG progression** — levels, XP, gold coins, quest system
 - **Character classes** — Algorithm Mage, Chrono Strategist, Flow Architect, Data Ranger
 - **Weather events** — storms, rain, fog, blizzards dynamically alter the graph

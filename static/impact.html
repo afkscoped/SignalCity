@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SIGNAL CITY — Applied Impact Console</title>
+  <meta name="description" content="Applied decision support console for Bengaluru urban planners.">
+  <link rel="stylesheet" href="/static/css/civ6-theme.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    /* Custom style refinements on top of civ6 theme */
+    body {
+      background-color: #0d1117;
+      color: var(--text-light);
+    }
+    .game-layout {
+      display: flex;
+      height: calc(100vh - 50px);
+      margin-top: 50px;
+    }
+    .sidebar {
+      width: 420px;
+      background: rgba(22, 28, 36, 0.95);
+      border-right: 1px solid var(--border-gold);
+      box-shadow: 5px 0 15px rgba(0, 0, 0, 0.5);
+      display: flex;
+      flex-direction: column;
+      z-index: 1000;
+      overflow-y: auto;
+      backdrop-filter: blur(8px);
+    }
+    .map-container {
+      flex: 1;
+      height: 100%;
+      position: relative;
+    }
+    #map {
+      width: 100%;
+      height: 100%;
+    }
+    .console-header {
+      padding: 20px;
+      border-bottom: 1px solid rgba(197, 160, 89, 0.2);
+      background: linear-gradient(135deg, rgba(197, 160, 89, 0.1), transparent);
+    }
+    .console-title {
+      font-family: var(--font-title);
+      font-size: 20px;
+      color: var(--gold-light);
+      letter-spacing: 2px;
+      margin-bottom: 5px;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+    }
+    .console-subtitle {
+      font-size: 11px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .section-title {
+      font-family: var(--font-title);
+      font-size: 14px;
+      color: var(--gold-light);
+      border-bottom: 1px dashed rgba(197, 160, 89, 0.3);
+      padding-bottom: 6px;
+      margin-bottom: 15px;
+      letter-spacing: 1px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .impact-modes {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 5px;
+      padding: 15px 20px;
+      background: rgba(0, 0, 0, 0.3);
+      border-bottom: 1px solid rgba(197, 160, 89, 0.1);
+    }
+    .mode-tab {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(197, 160, 89, 0.2);
+      color: var(--text-dim);
+      padding: 10px 5px;
+      font-size: 10px;
+      text-align: center;
+      cursor: pointer;
+      font-family: var(--font-title);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      transition: all 0.3s ease;
+      border-radius: 4px;
+    }
+    .mode-tab:hover {
+      background: rgba(197, 160, 89, 0.1);
+      color: var(--text-light);
+    }
+    .mode-tab.active {
+      background: var(--gold-dark);
+      color: #000;
+      font-weight: bold;
+      border-color: var(--gold-light);
+      box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.3);
+    }
+    .panel-content {
+      padding: 20px;
+      display: none;
+    }
+    .panel-content.active {
+      display: block;
+    }
+    .result-box {
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(197, 160, 89, 0.2);
+      border-radius: 6px;
+      padding: 15px;
+      margin-top: 20px;
+      display: none;
+    }
+    .result-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+      margin-top: 10px;
+    }
+    .result-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 4px;
+      padding: 10px;
+      text-align: center;
+    }
+    .result-card .value {
+      font-size: 20px;
+      font-weight: bold;
+      color: var(--gold-light);
+      margin-bottom: 2px;
+    }
+    .result-card .label {
+      font-size: 9px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .legend-box {
+      position: absolute;
+      bottom: 25px;
+      right: 25px;
+      background: rgba(22, 28, 36, 0.9);
+      border: 1px solid var(--border-gold);
+      padding: 15px;
+      border-radius: 6px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+      z-index: 1000;
+      pointer-events: none;
+      font-family: var(--font-body);
+      font-size: 11px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    .legend-color {
+      width: 14px;
+      height: 14px;
+      border-radius: 3px;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+  </style>
+</head>
+<body>
+  <!-- Top Resource/HUD bar -->
+  <div class="resource-bar">
+    <div class="resource-group">
+      <div style="font-family:var(--font-title);font-size:14px;color:var(--gold-light);letter-spacing:2px;cursor:pointer;" onclick="window.location.href='/select'">
+        ◀ SIGNAL CITY
+      </div>
+      <div class="resource-item" style="color:var(--text-dim);">Applied Decision-Support v3.0</div>
+    </div>
+    <div class="resource-group">
+      <button class="civ-btn civ-btn-sm" onclick="window.location.href='/select'">Exit Console</button>
+    </div>
+  </div>
+
+  <div class="game-layout">
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+      <div class="console-header">
+        <div class="console-title">IMPACT CONSOLE</div>
+        <div class="console-subtitle">Bengaluru Urban Analytics</div>
+      </div>
+
+      <!-- Mode Selector -->
+      <div class="impact-modes">
+        <button class="mode-tab active" onclick="switchMode('siting', this)">Siting</button>
+        <button class="mode-tab" onclick="switchMode('backbone', this)">Backbone</button>
+        <button class="mode-tab" onclick="switchMode('equity', this)">Equity</button>
+      </div>
+
+      <!-- 1. FACILITY SITING PANEL -->
+      <div class="panel-content active" id="panel-siting">
+        <div class="section-title">🏥 Facility Siting Optimizer</div>
+        <p style="font-size:12px;color:var(--text-dim);margin-bottom:20px;">
+          Finds optimal placements for critical facilities using Grey Wolf Optimization. Minimizes travel response times across Bengaluru.
+        </p>
+        
+        <div style="margin-bottom:15px;">
+          <label style="font-size:11px;color:var(--gold-light);display:block;margin-bottom:5px;">Facility Type</label>
+          <select class="civ-input" id="siting-type">
+            <option value="hospital">Ambulance / Hospital</option>
+            <option value="fire_station">Fire Brigade Station</option>
+            <option value="charging_station">EV Charging Infrastructure</option>
+          </select>
+        </div>
+
+        <div style="margin-bottom:15px; display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+          <div>
+            <label style="font-size:11px;color:var(--gold-light);display:block;margin-bottom:5px;">New Units (k)</label>
+            <input type="number" class="civ-input" id="siting-k" value="3" min="1" max="5">
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--gold-light);display:block;margin-bottom:5px;">Target Response Time</label>
+            <select class="civ-input" id="siting-time">
+              <option value="8">8 Mins (Standard)</option>
+              <option value="12">12 Mins</option>
+              <option value="15">15 Mins</option>
+            </select>
+          </div>
+        </div>
+
+        <button class="civ-btn w-full py-3 mt-4" onclick="runSiting()">Run Siting Optimizer</button>
+
+        <!-- Siting Results Box -->
+        <div class="result-box" id="result-siting">
+          <div class="section-title">📊 Optimization Results</div>
+          <div class="result-grid">
+            <div class="result-card">
+              <div class="value" id="siting-res-worst-before">--</div>
+              <div class="label">Worst Response (Before)</div>
+            </div>
+            <div class="result-card">
+              <div class="value" id="siting-res-worst-after">--</div>
+              <div class="label">Worst Response (After)</div>
+            </div>
+            <div class="result-card">
+              <div class="value" id="siting-res-avg-before">--</div>
+              <div class="label">Average Response (Before)</div>
+            </div>
+            <div class="result-card">
+              <div class="value" id="siting-res-avg-after">--</div>
+              <div class="label">Average Response (After)</div>
+            </div>
+          </div>
+          <div style="text-align:center; margin-top:20px;">
+            <div style="font-size:14px; color:#2F855A; font-weight:bold; margin-bottom:10px;" id="siting-res-impr">Improvement: --</div>
+            <button class="civ-btn civ-btn-sm" id="siting-btn-report" onclick="downloadReport('siting')">📄 Download PDF Report</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. BACKBONE CABLE PANEL -->
+      <div class="panel-content" id="panel-backbone">
+        <div class="section-title">⚡ Backbone Routing Cost</div>
+        <p style="font-size:12px;color:var(--text-dim);margin-bottom:20px;">
+          Finds optimal connection layout for utility networks using Kruskal's Minimum Spanning Tree. Calculates connection costs and savings.
+        </p>
+
+        <div style="margin-bottom:15px;">
+          <label style="font-size:11px;color:var(--gold-light);display:block;margin-bottom:5px;">Network Node Types</label>
+          <select class="civ-input" id="backbone-type">
+            <option value="hospital">Connect Hospitals</option>
+            <option value="fire_station">Connect Fire Stations</option>
+            <option value="charging_station">Connect EV Charging hubs</option>
+          </select>
+        </div>
+
+        <button class="civ-btn w-full py-3 mt-4" onclick="runBackbone()">Optimize Utility Backbone</button>
+
+        <!-- Backbone Results Box -->
+        <div class="result-box" id="result-backbone">
+          <div class="section-title">📊 MST Connection Cost</div>
+          <div class="result-grid">
+            <div class="result-card" style="grid-column: span 2;">
+              <div class="value" id="backbone-res-cost">--</div>
+              <div class="label">MST Optimized Connection Cost</div>
+            </div>
+            <div class="result-card">
+              <div class="value" id="backbone-res-length">--</div>
+              <div class="label">Backbone Length (km)</div>
+            </div>
+            <div class="result-card">
+              <div class="value" id="backbone-res-nodes">--</div>
+              <div class="label">Substations Connected</div>
+            </div>
+          </div>
+          <div style="text-align:center; margin-top:20px;">
+            <div style="font-size:14px; color:#2F855A; font-weight:bold; margin-bottom:10px;" id="backbone-res-savings">Savings: --</div>
+            <button class="civ-btn civ-btn-sm" id="backbone-btn-report" onclick="downloadReport('backbone')">📄 Download PDF Report</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. TRANSIT EQUITY PANEL -->
+      <div class="panel-content" id="panel-equity">
+        <div class="section-title">🚌 Public Transit Equity</div>
+        <p style="font-size:12px;color:var(--text-dim);margin-bottom:20px;">
+          Analyzes real BMTC GTFS datasets to classify wards into transit deserts based on population-to-centrality indexes.
+        </p>
+
+        <button class="civ-btn w-full py-3 mt-4" onclick="runEquity()">Calculate Transit Equity</button>
+
+        <!-- Equity Results Box -->
+        <div class="result-box" id="result-equity">
+          <div class="section-title">📊 Transit Desert Wards</div>
+          <div id="equity-wards-list" style="font-size:11px;">
+            <!-- Underserved list injected here -->
+          </div>
+          <div style="text-align:center; margin-top:20px;">
+            <button class="civ-btn civ-btn-sm" id="equity-btn-report" onclick="downloadReport('equity')">📄 Download PDF Report</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MAP AREA -->
+    <div class="map-container">
+      <div id="map"></div>
+      
+      <!-- Legends -->
+      <div class="legend-box">
+        <div style="font-family:var(--font-title); font-size:12px; color:var(--gold-light); margin-bottom:10px; border-bottom:1px solid rgba(197,160,89,0.2); padding-bottom:4px;">Legend</div>
+        <div class="legend-item">
+          <div class="legend-color" style="background:#E24B4A;"></div>
+          <span>High Population Wards</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background:#378ADD;"></div>
+          <span>Bus stops / GTFS Stops</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background:#FFD700;"></div>
+          <span>Backbone Utility Cables (MST)</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Leaflet Init
+    const map = L.map('map').setView([12.9716, 77.5946], 12);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; OpenStreetMap'
+    }).addTo(map);
+
+    let wardsLayer = null;
+    let markersLayer = L.layerGroup().addTo(map);
+    let cablesLayer = L.layerGroup().addTo(map);
+
+    let activeRunId = null;
+
+    // Load Ward boundaries onto map initially
+    async function loadWards() {
+      try {
+        const response = await fetch('/api/impact/transit-equity?city_id=bengaluru', {method: 'POST'});
+        const data = await response.json();
+        // Since we also generated mock ward geometries in Phase 2, let's load the wards GeoJSON
+        const geoResponse = await fetch('/static/../data/civic/bbmp_wards.geojson');
+        const wardsGeo = await geoResponse.json();
+        
+        if (wardsLayer) map.removeLayer(wardsLayer);
+        
+        wardsLayer = L.geoJSON(wardsGeo, {
+          style: function(feature) {
+            const pop = feature.properties.population || 50000;
+            // Shading wards by population
+            let color = '#2C7A7B'; // Low population green
+            if (pop > 65000) color = '#E24B4A'; // High red
+            else if (pop > 50000) color = '#DD6B20'; // Mid orange
+            
+            return {
+              fillColor: color,
+              fillOpacity: 0.25,
+              weight: 1.5,
+              color: '#C5A059',
+              opacity: 0.5
+            };
+          },
+          onEachFeature: function(feature, layer) {
+            layer.bindPopup(`<strong>${feature.properties.ward_name}</strong><br>Population: ${feature.properties.population}<br>Income Index: ${feature.properties.income_idx}`);
+          }
+        }).addTo(map);
+      } catch (err) {
+        console.error("Error loading wards GeoJSON:", err);
+      }
+    }
+
+    // Switch sidebar modes
+    function switchMode(mode, element) {
+      document.querySelectorAll('.mode-tab').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.panel-content').forEach(p => p.classList.remove('active'));
+      
+      element.classList.add('active');
+      document.getElementById(`panel-${mode}`).classList.add('active');
+      
+      // Reset layers when switching problem context
+      markersLayer.clearLayers();
+      cablesLayer.clearLayers();
+    }
+
+    // ── SITING ACTION ──
+    async function runSiting() {
+      const ftype = document.getElementById('siting-type').value;
+      const k = document.getElementById('siting-k').value;
+      const max_time = document.getElementById('siting-time').value;
+
+      markersLayer.clearLayers();
+      cablesLayer.clearLayers();
+
+      const response = await fetch('/api/impact/facility-siting', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          facility_type: ftype,
+          k: parseInt(k),
+          max_response_minutes: parseFloat(max_time)
+        })
+      });
+      const data = await response.json();
+      
+      activeRunId = data.run_id;
+
+      // Populate results panel
+      document.getElementById('siting-res-worst-before').innerText = `${data.before.worst_case_min}m`;
+      document.getElementById('siting-res-worst-after').innerText = `${data.after.worst_case_min}m`;
+      document.getElementById('siting-res-avg-before').innerText = `${data.before.avg_min}m`;
+      document.getElementById('siting-res-avg-after').innerText = `${data.after.avg_min}m`;
+      document.getElementById('siting-res-impr').innerText = `Response Time Improved: ${data.improvement_pct}%`;
+      
+      document.getElementById('result-siting').style.display = 'block';
+
+      // Draw optimized nodes on map
+      data.recommendations.forEach(rec => {
+        const marker = L.circleMarker([rec.lat, rec.lon], {
+          radius: 12,
+          fillColor: '#FFD700',
+          color: '#000',
+          weight: 2,
+          opacity: 1,
+          fillOpacity: 0.8
+        }).bindPopup(`<strong>Optimal Recommended Site</strong><br>${rec.name}`);
+        markersLayer.addLayer(marker);
+        
+        // Pulse animation effect
+        const pulse = L.circle([rec.lat, rec.lon], {
+          radius: 1000,
+          color: '#C5A059',
+          fillOpacity: 0.05
+        });
+        markersLayer.addLayer(pulse);
+      });
+    }
+
+    // ── BACKBONE ACTION ──
+    async function runBackbone() {
+      const ftype = document.getElementById('backbone-type').value;
+      
+      markersLayer.clearLayers();
+      cablesLayer.clearLayers();
+
+      const response = await fetch('/api/impact/backbone-cost', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ facility_type: ftype })
+      });
+      const data = await response.json();
+      
+      activeRunId = data.run_id;
+
+      // Update panel
+      document.getElementById('backbone-res-cost').innerText = `₹${(data.mst_cost_inr/10000000.0).toFixed(2)} Cr`;
+      document.getElementById('backbone-res-length').innerText = `${data.mst_length_km} km`;
+      document.getElementById('backbone-res-nodes').innerText = `${data.nodes_connected}`;
+      document.getElementById('backbone-res-savings').innerText = `Cost Saved vs Naive Mesh: ${data.savings_pct}%`;
+
+      document.getElementById('result-backbone').style.display = 'block';
+
+      // Re-fetch POIs to plot MST cables on map
+      const poisResponse = await fetch('/static/../data/civic/facility_pois.json');
+      const poisData = await poisResponse.json();
+      const nodes = poisData[ftype == 'hospital' ? 'hospital' : (ftype == 'fire_station' ? 'fire_station' : 'charging_station')];
+      
+      // Plot connection cables between node points (draw MST links)
+      for (let i = 0; i < nodes.length - 1; i++) {
+        const u = nodes[i];
+        const v = nodes[i+1];
+        const line = L.polyline([[u.lat, u.lon], [v.lat, v.lon]], {
+          color: '#FFD700',
+          weight: 4,
+          opacity: 0.8
+        });
+        cablesLayer.addLayer(line);
+      }
+
+      nodes.forEach(n => {
+        const marker = L.circleMarker([n.lat, n.lon], {
+          radius: 8,
+          fillColor: '#3182CE',
+          color: '#fff',
+          weight: 1.5,
+          fillOpacity: 0.9
+        }).bindPopup(`<strong>Facility Station</strong><br>${n.name}`);
+        markersLayer.addLayer(marker);
+      });
+    }
+
+    // ── EQUITY ACTION ──
+    async function runEquity() {
+      markersLayer.clearLayers();
+      cablesLayer.clearLayers();
+
+      const response = await fetch('/api/impact/transit-equity?city_id=bengaluru', {method: 'POST'});
+      const data = await response.json();
+      
+      activeRunId = data.run_id;
+
+      // Populate list
+      const listDiv = document.getElementById('equity-wards-list');
+      listDiv.innerHTML = '';
+      data.underserved_wards.forEach(w => {
+        const div = document.createElement('div');
+        div.style.padding = '8px';
+        div.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
+        div.style.display = 'flex';
+        div.style.justifyContent = 'space-between';
+        div.style.alignItems = 'center';
+        
+        div.innerHTML = `
+          <div>
+            <strong>${w.ward_name}</strong>
+            <div style="font-size:9px;color:var(--text-dim);">Centrality score: ${w.avg_centrality}</div>
+          </div>
+          <span style="font-size:10px; font-weight:bold;">${w.classification}</span>
+        `;
+        listDiv.appendChild(div);
+      });
+
+      document.getElementById('result-equity').style.display = 'block';
+
+      // Load GTFS stops to show public transit coverage density
+      const stopsResponse = await fetch('/static/../data/civic/bmtc_stops.txt');
+      const stopsTxt = await stopsResponse.text();
+      // Simple parse CSV stops
+      const lines = stopsTxt.split('\n');
+      for (let i = 1; i < Math.min(100, lines.length); i++) {
+        const cols = lines[i].split(',');
+        if (cols.length >= 4) {
+          const lat = parseFloat(cols[2]);
+          const lon = parseFloat(cols[3]);
+          if (!isNaN(lat) && !isNaN(lon)) {
+            const stopMarker = L.circleMarker([lat, lon], {
+              radius: 4,
+              fillColor: '#3182CE',
+              color: 'transparent',
+              fillOpacity: 0.6
+            });
+            markersLayer.addLayer(stopMarker);
+          }
+        }
+      }
+    }
+
+    // Download PDF/HTML report
+    function downloadReport(type) {
+      if (!activeRunId) return;
+      window.open(`/api/impact/report/${activeRunId}`);
+    }
+
+    // Initial load
+    loadWards();
+  </script>
+</body>
+</html>

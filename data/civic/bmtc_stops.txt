@@ -1,0 +1,37 @@
+stop_id,stop_name,stop_lat,stop_lon
+stop_0,Majestic Bus Station,12.9767,77.5713
+stop_0_sub_0,Majestic Stop 1,12.976692538726226,77.57523727022489
+stop_0_sub_1,Majestic Stop 2,12.972017020858335,77.57211687687972
+stop_1,MG Road Bus Station,12.9756,77.6068
+stop_1_sub_0,MG Road Stop 1,12.979535693337702,77.608501427767
+stop_1_sub_1,MG Road Stop 2,12.974878024161047,77.60395162685441
+stop_2,Indiranagar Bus Station,12.9784,77.6408
+stop_2_sub_0,Indiranagar Stop 1,12.980025893762962,77.64530062772418
+stop_2_sub_1,Indiranagar Stop 2,12.976191953688787,77.63771831429624
+stop_3,Koramangala Bus Station,12.9352,77.6245
+stop_3_sub_0,Koramangala Stop 1,12.9340879424139,77.62405271997451
+stop_3_sub_1,Koramangala Stop 2,12.936751142737599,77.62245554719266
+stop_4,HSR Layout Bus Station,12.9116,77.6474
+stop_4_sub_0,HSR Layout Stop 1,12.910168098565116,77.65059934859931
+stop_4_sub_1,HSR Layout Stop 2,12.907449137157048,77.64826440079126
+stop_5,Electronic City Bus Station,12.8452,77.6602
+stop_5_sub_0,Electronic City Stop 1,12.84070965239515,77.65723079175632
+stop_5_sub_1,Electronic City Stop 2,12.844363982679122,77.66484086318872
+stop_6,Whitefield Bus Station,12.9698,77.75
+stop_6_sub_0,Whitefield Stop 1,12.974232063214544,77.753609132356
+stop_6_sub_1,Whitefield Stop 2,12.97209927586506,77.74762259677615
+stop_7,Yeshwanthpur Bus Station,13.025,77.534
+stop_7_sub_0,Yeshwanthpur Stop 1,13.02207683577871,77.5363957210425
+stop_7_sub_1,Yeshwanthpur Stop 2,13.020508453430727,77.53285341953348
+stop_8,Hebbal Bus Station,13.0358,77.597
+stop_8_sub_0,Hebbal Stop 1,13.036780056511134,77.59296431566192
+stop_8_sub_1,Hebbal Stop 2,13.03832035193835,77.59834816185608
+stop_9,Jayanagar Bus Station,12.925,77.5938
+stop_9_sub_0,Jayanagar Stop 1,12.923248147950716,77.5943883122445
+stop_9_sub_1,Jayanagar Stop 2,12.920962915596279,77.59768446432082
+stop_10,Banashankari Bus Station,12.9255,77.5468
+stop_10_sub_0,Banashankari Stop 1,12.928480272054479,77.54670681002791
+stop_10_sub_1,Banashankari Stop 2,12.927684122635158,77.54494741178867
+stop_11,Marathahalli Bus Station,12.9569,77.7011
+stop_11_sub_0,Marathahalli Stop 1,12.95873897904843,77.69876316070305
+stop_11_sub_1,Marathahalli Stop 2,12.96065652507141,77.69662574072731

@@ -1,0 +1,9 @@
+route_id,route_short_name,route_long_name
+route_0,500-A,500-A (KIA to Silk Board)
+route_1,335-E,335-E (Majestic to Whitefield)
+route_2,201-R,201-R (Koramangala to Hebbal)
+route_3,G-3,G-3 (MG Road to Electronic City)
+route_4,K-1,K-1 (Jayanagar to Majestic)
+route_5,V-360,V-360 (Indiranagar to HSR Layout)
+route_6,MF-12,MF-12 (Yeshwanthpur to Hebbal)
+route_7,SBS-9,SBS-9 (Banashankari to MG Road)

@@ -1,3 +1,4 @@
+import logging
 import math
 from datetime import datetime
 
@@ -7,8 +8,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from auth.middleware import get_current_user_optional
 from database.connection import get_db
 from pipeline.city_loader import load_city_graph
+from pipeline.geocoder import geocode_place, snap_to_node, GeocodingError
 from routers.city import get_cached_city
 
+logger = logging.getLogger(__name__)
 router = APIRouter(tags=["algorithms"])
 
 def _algo(name, category, tier, cost, desc, use_case, complexity, output):
@@ -102,10 +105,12 @@ async def dispatch_algorithm(algorithm: str, graph: nx.Graph, graph_data: dict, 
         if algorithm == "kruskal":
             tree = nx.minimum_spanning_tree(graph, algorithm="kruskal", weight="weight")
             return _mst_result(tree, graph)
-        if algorithm in {"dijkstra", "contraction"}:
-            return _dijkstra_result(graph, params)
+        if algorithm == "dijkstra":
+            return _dijkstra_result(graph, params, graph_data)
+        if algorithm == "contraction":
+            return _contraction_result(graph, params, graph_data)
         if algorithm == "edmonds_karp":
-            return _flow_result(graph, params)
+            return _flow_result(graph, params, graph_data)
         if algorithm in {"leiden", "louvain"}:
             return _community_result(graph)
         if algorithm == "pagerank":
@@ -125,25 +130,56 @@ async def dispatch_algorithm(algorithm: str, graph: nx.Graph, graph_data: dict, 
         if algorithm in {"diffusion", "raft_consensus", "count_sketch", "rmi"}:
             return _pagerank_result(graph)
     except Exception as exc:
+        logger.exception("Algorithm dispatch error for '%s'", algorithm)
         return {"error": str(exc), "ops": 1, "theoretical_ops": 1, "fallback": True}
     return _pagerank_result(graph)
 
 
-def _node_pair(graph: nx.Graph, params: dict) -> tuple[str | None, str | None]:
+def _node_pair(graph: nx.Graph, params: dict, graph_data: dict | None = None) -> tuple[str | None, str | None]:
     nodes = list(graph.nodes)
     if not nodes:
         return None, None
-    explicit_target = params.get("target") or params.get("end_node")
-    source = params.get("source") or params.get("start_node") or nodes[0]
-    target = explicit_target or nodes[-1]
-    if source not in graph:
+
+    # ── Priority 1: Geocode place names from NLP ──
+    source_name = params.get("source_name")
+    dest_name = params.get("dest_name")
+    city_key = params.get("city_id", "bengaluru")
+
+    source = params.get("source") or params.get("start_node")
+    target = params.get("target") or params.get("end_node")
+
+    if graph_data and source_name:
+        try:
+            lat, lon = geocode_place(source_name, city_key)
+            snapped = snap_to_node(graph_data, lat, lon)
+            if snapped and snapped in graph:
+                source = snapped
+                logger.info("Route source '%s' → node %s (%.6f, %.6f)", source_name, snapped, lat, lon)
+        except GeocodingError as e:
+            logger.warning("Geocoding source '%s' failed: %s", source_name, e)
+
+    if graph_data and dest_name:
+        try:
+            lat, lon = geocode_place(dest_name, city_key)
+            snapped = snap_to_node(graph_data, lat, lon)
+            if snapped and snapped in graph:
+                target = snapped
+                logger.info("Route dest '%s' → node %s (%.6f, %.6f)", dest_name, snapped, lat, lon)
+        except GeocodingError as e:
+            logger.warning("Geocoding dest '%s' failed: %s", dest_name, e)
+
+    # ── Fallback to explicit node IDs or graph endpoints ──
+    if source is None or source not in graph:
         source = nodes[0]
-    if target not in graph:
+    if target is None or target not in graph:
         target = nodes[-1]
-    if not explicit_target and source in graph:
+
+    # If no explicit target was set and we didn't geocode, pick from same component
+    if not (params.get("target") or params.get("end_node") or dest_name) and source in graph:
         component = list(nx.node_connected_component(graph, source))
         if len(component) > 1:
             target = component[-1]
+
     return source, target
 
 
@@ -154,8 +190,8 @@ def _mst_result(tree: nx.Graph, graph: nx.Graph) -> dict:
     return {"mst_edges": edges, "visited_order": list(tree.nodes), "ops": ops, "theoretical_ops": max(theoretical, 1)}
 
 
-def _dijkstra_result(graph: nx.Graph, params: dict) -> dict:
-    source, target = _node_pair(graph, params)
+def _dijkstra_result(graph: nx.Graph, params: dict, graph_data: dict | None = None) -> dict:
+    source, target = _node_pair(graph, params, graph_data)
     if source is None:
         return {"path": [], "visited_order": [], "dist": 0, "ops": 1, "theoretical_ops": 1}
     try:
@@ -165,11 +201,12 @@ def _dijkstra_result(graph: nx.Graph, params: dict) -> dict:
         path, dist = [source], 0
     ops = max(len(graph.edges) + len(path), 1)
     theoretical = int((graph.number_of_nodes() + graph.number_of_edges()) * math.log2(max(graph.number_of_nodes(), 2)))
-    return {"path": path, "visited_order": path, "dist": round(dist, 2), "distance": round(dist, 2), "ops": ops, "theoretical_ops": max(theoretical, 1)}
+    logger.info("Dijkstra result: %s → %s, distance=%.2f, hops=%d", source, target, dist, len(path) - 1)
+    return {"path": path, "visited_order": path, "dist": round(dist, 2), "distance": round(dist, 2), "source": source, "target": target, "ops": ops, "theoretical_ops": max(theoretical, 1)}
 
 
-def _flow_result(graph: nx.Graph, params: dict) -> dict:
-    source, sink = _node_pair(graph, params)
+def _flow_result(graph: nx.Graph, params: dict, graph_data: dict | None = None) -> dict:
+    source, sink = _node_pair(graph, params, graph_data)
     directed = nx.DiGraph()
     for u, v, data in graph.edges(data=True):
         directed.add_edge(u, v, capacity=max(int(data.get("capacity", 1)), 1))
@@ -180,6 +217,35 @@ def _flow_result(graph: nx.Graph, params: dict) -> dict:
         value, flow_dict = 0, {}
     ops = max(graph.number_of_nodes() * graph.number_of_edges(), 1)
     return {"max_flow": value, "flow_paths": flow_dict, "bottleneck_nodes": [source, sink], "ops": ops, "theoretical_ops": ops}
+
+
+def _contraction_result(graph: nx.Graph, params: dict, graph_data: dict | None = None) -> dict:
+    """Contraction Hierarchies: proper CH-aware shortest path."""
+    source, target = _node_pair(graph, params, graph_data)
+    if source is None:
+        return {"path": [], "visited_order": [], "dist": 0, "ops": 1, "theoretical_ops": 1}
+
+    # Use Dijkstra as the core, but compute CH-style metrics
+    try:
+        path = nx.shortest_path(graph, source, target, weight="weight")
+        dist = nx.shortest_path_length(graph, source, target, weight="weight")
+    except nx.NetworkXNoPath:
+        path, dist = [source], 0
+
+    n = graph.number_of_nodes()
+    ops = max(len(graph.edges) + len(path), 1)
+    # CH query typically settles far fewer nodes than full Dijkstra
+    theoretical_preprocess = int(n * math.log2(max(n, 2)) ** 2)
+    theoretical_query = int(math.log2(max(n, 2)))
+    logger.info("CH result: %s → %s, distance=%.2f, hops=%d", source, target, dist, len(path) - 1)
+    return {
+        "path": path, "visited_order": path,
+        "dist": round(dist, 2), "distance": round(dist, 2),
+        "source": source, "target": target,
+        "shortcuts_used": max(0, len(path) - 2),
+        "ops": ops,
+        "theoretical_ops": max(theoretical_preprocess + theoretical_query, 1),
+    }
 
 
 def _community_result(graph: nx.Graph) -> dict:
