@@ -143,6 +143,9 @@ CITY_HOTSPOTS = {
 
 GRAPH_CACHE_DIR = os.path.join("data", "graphs")
 os.makedirs(GRAPH_CACHE_DIR, exist_ok=True)
+GRAPH_SCHEMA_VERSION = "bengaluru_route_v7_boundary_scope"
+BENGALURU_OSM_RADIUS_M = 32000
+MAX_VISUAL_NODES = 9000
 
 
 def slugify_city(city_key: str) -> str:
@@ -186,7 +189,11 @@ def _project_coords(graph: nx.MultiDiGraph) -> dict[str, Any]:
     if not cc_nodes:
         raise ValueError("Connected component has no coordinate data")
 
-    if len(cc_nodes) > 450:
+    original_component_node_count = len(cc_nodes)
+    original_component_edge_count = graph.number_of_edges()
+    is_sampled = len(cc_nodes) > MAX_VISUAL_NODES
+
+    if is_sampled:
         avg_lat = sum(lats_dict[nid] for nid in cc_nodes) / len(cc_nodes)
         avg_lon = sum(lons_dict[nid] for nid in cc_nodes) / len(cc_nodes)
         
@@ -195,14 +202,14 @@ def _project_coords(graph: nx.MultiDiGraph) -> dict[str, Any]:
         sampled_ids = set([center_node])
         queue = [center_node]
         head = 0
-        while head < len(queue) and len(sampled_ids) < 450:
+        while head < len(queue) and len(sampled_ids) < MAX_VISUAL_NODES:
             curr = queue[head]
             head += 1
             for neighbor in u_graph.neighbors(curr):
                 if neighbor in cc_nodes and neighbor not in sampled_ids:
                     sampled_ids.add(neighbor)
                     queue.append(neighbor)
-                    if len(sampled_ids) >= 450:
+                    if len(sampled_ids) >= MAX_VISUAL_NODES:
                         break
     else:
         sampled_ids = set(cc_nodes)
@@ -270,6 +277,14 @@ def _project_coords(graph: nx.MultiDiGraph) -> dict[str, Any]:
         "node_count": len(nodes),
         "edge_count": len(edges),
         "bbox": {"min_lat": min_lat, "max_lat": max_lat, "min_lon": min_lon, "max_lon": max_lon},
+        "graph_detail": {
+            "original_component_nodes": original_component_node_count,
+            "original_component_edges": original_component_edge_count,
+            "rendered_nodes": len(nodes),
+            "rendered_edges": len(edges),
+            "sampled_for_browser_performance": is_sampled,
+            "max_render_nodes": MAX_VISUAL_NODES,
+        },
     })
 
 
@@ -337,6 +352,8 @@ def _attach_hotspots(graph_data: dict[str, Any]) -> dict[str, Any]:
                 "highway": "arterial_connector",
                 "name": f"{name} connector",
                 "capacity": 3600,
+                "virtual_connector": True,
+                "data_warning": "Synthetic fallback connector from known landmark to nearest sampled OSM node.",
             })
             nearest = hotspot_node
             nearest_dist = 0
@@ -350,6 +367,7 @@ def _attach_hotspots(graph_data: dict[str, Any]) -> dict[str, Any]:
             used_nodes.add(nearest["id"])
 
     graph_data["hotspots"] = assigned
+    graph_data["landmark_nodes"] = {item["name"]: item["node_id"] for item in assigned}
     graph_data["hotspot_count"] = len(assigned)
     graph_data["node_count"] = len(graph_data.get("nodes", []))
     graph_data["edge_count"] = len(graph_data.get("edges", []))
@@ -371,6 +389,12 @@ def _load_bundled_fallback(city_key: str) -> dict[str, Any] | None:
             data["city_id"] = city_key
             data["source"] = data.get("source") or data.get("metadata", {}).get("source", "bundled_fallback")
             data["source"] = "bundled_fallback"
+            data["graph_schema_version"] = GRAPH_SCHEMA_VERSION
+            data["data_quality"] = {
+                "source": "bundled_fallback",
+                "is_live_or_cached_osm": False,
+                "warning": "Offline fallback graph. Use for demo only, not final live-map claims.",
+            }
             data["node_count"] = len(data.get("nodes", []))
             data["edge_count"] = len(data.get("edges", []))
             return _attach_hotspots(data)
@@ -379,29 +403,73 @@ def _load_bundled_fallback(city_key: str) -> dict[str, Any] | None:
     return None
 
 
+def _finalize_graph_quality(data: dict[str, Any], source: str, live_or_cached: bool, warning: str) -> dict[str, Any]:
+    detail = data.get("graph_detail", {})
+    if detail.get("sampled_for_browser_performance"):
+        warning = (
+            f"{warning} Browser graph is sampled to {detail.get('rendered_nodes')} of "
+            f"{detail.get('original_component_nodes')} connected OSM nodes for interactive rendering."
+        )
+    data["source"] = source
+    data["graph_schema_version"] = GRAPH_SCHEMA_VERSION
+    data["data_quality"] = {
+        "source": source,
+        "is_live_or_cached_osm": live_or_cached,
+        "warning": warning,
+        "graph_detail": detail,
+    }
+    return data
+
+
 async def load_city_graph(city_key: str) -> dict[str, Any]:
     city_key = slugify_city(city_key)
     json_cache_path = os.path.join(GRAPH_CACHE_DIR, f"{city_key}.json")
     graphml_cache_path = os.path.join(GRAPH_CACHE_DIR, f"{city_key}.graphml")
 
+    def graphml_candidates() -> list[str]:
+        candidates = [graphml_cache_path]
+        if city_key == "bengaluru":
+            # Older builds sometimes cached the fuller city graph under the
+            # colonial spelling while the UI asks for Bengaluru. Prefer the
+            # largest valid GraphML cache so demos do not silently collapse to
+            # a tiny 700-node centre-city graph.
+            candidates.append(os.path.join(GRAPH_CACHE_DIR, "bangalore.graphml"))
+        existing = [path for path in candidates if os.path.exists(path)]
+        return sorted(existing, key=lambda path: os.path.getsize(path), reverse=True)
+
     if os.path.exists(json_cache_path):
         try:
             with open(json_cache_path, "r", encoding="utf-8") as f:
                 cached = _attach_hotspots(json.load(f))
-            return cached
+            if cached.get("graph_schema_version") == GRAPH_SCHEMA_VERSION:
+                cached.setdefault("data_quality", {
+                    "source": cached.get("source", "cached_osm"),
+                    "is_live_or_cached_osm": cached.get("source") in {"osmnx_live", "overpass_live", "osmnx_cache", "cached_osm"},
+                    "warning": "Cached graph generated by Signal City route schema v4.",
+                })
+                return cached
+            logger.info("Ignoring old graph cache for %s because schema version is stale.", city_key)
         except Exception as exc:
             logger.warning("JSON cache corrupt for %s: %s", city_key, exc)
 
-    if os.path.exists(graphml_cache_path):
+    for candidate_graphml_path in graphml_candidates():
         try:
-            graph = nx.read_graphml(graphml_cache_path)
+            graph = nx.read_graphml(candidate_graphml_path)
             data = _project_coords(graph)
-            data.update({"city": city_key, "source": "osmnx_cache"})
+            data.update({
+                "city": city_key,
+                "city_id": city_key,
+            })
+            cache_label = "osmnx_cache"
+            warning = "Graph regenerated from cached OSMnx GraphML."
+            if os.path.basename(candidate_graphml_path).startswith("bangalore"):
+                warning = "Graph regenerated from the larger cached Bengaluru/Bangalore OSMnx GraphML."
+            data = _finalize_graph_quality(data, cache_label, True, warning)
             with open(json_cache_path, "w", encoding="utf-8") as f:
                 json.dump(data, f)
             return _attach_hotspots(data)
         except Exception as exc:
-            logger.warning("GraphML cache failed for %s: %s", city_key, exc)
+            logger.warning("GraphML cache failed for %s from %s: %s", city_key, candidate_graphml_path, exc)
 
     try:
         import osmnx as ox
@@ -413,11 +481,26 @@ async def load_city_graph(city_key: str) -> dict[str, Any]:
         city_info = CITY_REGISTRY.get(city_key)
         loop = asyncio.get_running_loop()
         if city_info:
-            lat, lon = city_info["lat"], city_info["lon"]
-            graph = await loop.run_in_executor(
-                None,
-                lambda: ox.graph_from_point((lat, lon), dist=1200, network_type="drive"),
-            )
+            if city_key == "bengaluru":
+                place_query = "Bengaluru, Karnataka, India"
+                try:
+                    graph = await loop.run_in_executor(
+                        None,
+                        lambda: ox.graph_from_place(place_query, network_type="drive", simplify=True, retain_all=False),
+                    )
+                except Exception as place_exc:
+                    logger.warning("Boundary OSMnx fetch failed for Bengaluru: %s. Falling back to large radius.", place_exc)
+                    lat, lon = city_info["lat"], city_info["lon"]
+                    graph = await loop.run_in_executor(
+                        None,
+                        lambda: ox.graph_from_point((lat, lon), dist=BENGALURU_OSM_RADIUS_M, network_type="drive", simplify=True),
+                    )
+            else:
+                lat, lon = city_info["lat"], city_info["lon"]
+                graph = await loop.run_in_executor(
+                    None,
+                    lambda: ox.graph_from_point((lat, lon), dist=2500, network_type="drive", simplify=True),
+                )
         else:
             place_query = f"{city_key.replace('-', ' ').title()}, India"
             graph = await loop.run_in_executor(
@@ -426,7 +509,16 @@ async def load_city_graph(city_key: str) -> dict[str, Any]:
             )
         ox.save_graphml(graph, filepath=graphml_cache_path)
         data = _project_coords(graph)
-        data.update({"city": city_key, "source": "osmnx_live"})
+        data.update({
+            "city": city_key,
+            "city_id": city_key,
+        })
+        data = _finalize_graph_quality(
+            data,
+            "osmnx_live",
+            True,
+            "Live OSMnx road graph; edge weights are road lengths unless weather/risk options reweight them.",
+        )
         with open(json_cache_path, "w", encoding="utf-8") as f:
             json.dump(data, f)
         return _attach_hotspots(data)
@@ -457,7 +549,7 @@ async def load_city_graph(city_key: str) -> dict[str, Any]:
         query = f"""
         [out:json][timeout:30];
         (
-          way["highway"](around:1200, {lat}, {lon});
+          way["highway"](around:{BENGALURU_OSM_RADIUS_M if city_key == "bengaluru" else 2500}, {lat}, {lon});
         );
         out body;
         >;
@@ -546,7 +638,16 @@ async def load_city_graph(city_key: str) -> dict[str, Any]:
                         graph.add_edge(v, u, **attrs)
 
         data = _project_coords(graph)
-        data.update({"city": city_key, "source": "overpass_live"})
+        data.update({
+            "city": city_key,
+            "city_id": city_key,
+        })
+        data = _finalize_graph_quality(
+            data,
+            "overpass_live",
+            True,
+            "Direct Overpass road graph; edge weights are haversine segment lengths.",
+        )
         with open(json_cache_path, "w", encoding="utf-8") as f:
             json.dump(data, f)
         return _attach_hotspots(data)
@@ -633,7 +734,14 @@ def _generate_synthetic_graph(city_key: str, n: int = 240) -> dict[str, Any]:
         "node_count": len(nodes),
         "edge_count": len(edges),
         "city": city_key,
+        "city_id": city_key,
         "source": "synthetic_fallback",
+        "graph_schema_version": GRAPH_SCHEMA_VERSION,
+        "data_quality": {
+            "source": "synthetic_fallback",
+            "is_live_or_cached_osm": False,
+            "warning": "Synthetic graph generated because live/cached OSM data was unavailable. Do not present route geometry as real Bengaluru roads.",
+        },
         "bbox": {"min_lat": min(n["lat"] for n in nodes), "max_lat": max(n["lat"] for n in nodes),
                  "min_lon": min(n["lon"] for n in nodes), "max_lon": max(n["lon"] for n in nodes)},
     })

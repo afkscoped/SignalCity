@@ -54,6 +54,23 @@
           <option value="">Select a city...</option>
         </select>
         <div id="city-info" class="mt-2" style="font-size:11px;color:var(--text-dim);"></div>
+        <div style="margin-top:10px;border-top:1px dashed rgba(197,160,89,0.2);padding-top:8px;">
+          <div class="sidebar-title" style="font-size:10px;margin-bottom:6px;">Algorithm Scope</div>
+          <div style="display:grid;grid-template-columns:1.35fr .65fr;gap:6px;">
+            <select class="civ-input" id="scope-mode" style="font-size:11px;padding:5px;" onchange="updateScopeHint()">
+              <option value="selection" selected>Selected corridor/area</option>
+              <option value="radius">Radius around start</option>
+              <option value="all">Whole rendered city</option>
+            </select>
+            <select class="civ-input" id="scope-radius" style="font-size:11px;padding:5px;" onchange="updateScopeHint()">
+              <option value="2.5">2.5 km</option>
+              <option value="5" selected>5 km</option>
+              <option value="8">8 km</option>
+              <option value="12">12 km</option>
+            </select>
+          </div>
+          <div id="scope-hint" style="font-size:10px;color:var(--text-dim);line-height:1.35;margin-top:5px;"></div>
+        </div>
         
         <!-- Locality selectors -->
         <div id="locality-selectors-container" style="display:none; margin-top:10px; border-top:1px dashed rgba(197, 160, 89, 0.2); padding-top:8px; flex-direction:column; gap:8px;">
@@ -66,6 +83,10 @@
               <label style="font-size:9px;color:var(--gold-light);display:block;margin-bottom:2px;">🏁 End Locality</label>
               <select class="civ-input" id="end-locality-selector" onchange="selectLocality('end', this.value)" style="font-size:11px;padding:4px;"></select>
             </div>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
+            <input class="civ-input" id="start-place-input" placeholder="Or type start place" style="font-size:11px;padding:5px;">
+            <input class="civ-input" id="end-place-input" placeholder="Or type end place" style="font-size:11px;padding:5px;">
           </div>
         </div>
       </div>
@@ -82,7 +103,10 @@
 
       <!-- Algorithm Palette -->
       <div class="sidebar-section flex-1 overflow-y-auto">
-        <div class="sidebar-title">⚡ Algorithms</div>
+        <div class="sidebar-title" style="display:flex; justify-content:space-between; align-items:center;">
+          <span>⚡ Algorithms</span>
+          <button class="civ-btn civ-btn-sm" style="font-size:9px; padding:2px 6px; text-transform:none; border-color:var(--gold); color:var(--gold);" onclick="openAlgoDirectory()">📚 Directory</button>
+        </div>
         <div class="tab-bar">
           <button class="tab-btn active" onclick="showAlgoTab('all',this)">All</button>
           <button class="tab-btn" onclick="showAlgoTab('mst',this)">MST</button>
@@ -93,6 +117,8 @@
         </div>
         <div class="algo-palette" id="algo-palette"></div>
         <button class="civ-btn civ-btn-sm w-full mt-2" onclick="compareSelectedAlgorithms()">Compare Checked Algorithms</button>
+        <button class="civ-btn civ-btn-sm w-full mt-2" onclick="runDefaultDemo()">Run Default Demo</button>
+        <button class="civ-btn civ-btn-sm w-full mt-2" onclick="resetSignalMapProgress()">Reset Coins + Map</button>
       </div>
 
       <!-- Missions -->
@@ -361,6 +387,68 @@
       document.getElementById('academy-insights-modal').style.display = 'none';
     }
 
+    function openAlgoDirectory() {
+      const modal = document.getElementById('algo-directory-modal');
+      if (!modal) return;
+      modal.style.display = 'flex';
+      renderAlgoDirectoryGrid();
+    }
+
+    function closeAlgoDirectory() {
+      const modal = document.getElementById('algo-directory-modal');
+      if (modal) modal.style.display = 'none';
+    }
+
+    function renderAlgoDirectoryGrid() {
+      const grid = document.getElementById('algo-directory-grid');
+      if (!grid) return;
+      const searchVal = document.getElementById('algo-dir-search').value.toLowerCase();
+      const catVal = document.getElementById('algo-dir-category-filter').value;
+      const unlocked = new Set(Object.keys(state.algos));
+
+      let html = '';
+      for (const [id, info] of Object.entries(state.algos)) {
+        const cat = info.category || 'other';
+        const name = info.name || '';
+        const desc = info.desc || '';
+        const usecase = info.use_case || '';
+        const complexity = info.complexity || '';
+
+        if (catVal !== 'all' && cat !== catVal) continue;
+        if (searchVal && !name.toLowerCase().includes(searchVal) && 
+            !desc.toLowerCase().includes(searchVal) && 
+            !usecase.toLowerCase().includes(searchVal) && 
+            !cat.toLowerCase().includes(searchVal)) continue;
+
+        const locked = !unlocked.has(id);
+
+        html += `
+          <div class="civ-panel ${locked ? 'locked' : ''}" style="border: 1.5px solid ${locked ? '#3b434f' : 'var(--gold-light)'}; padding: 12px; border-radius: 4px; display:flex; flex-direction:column; justify-content:space-between; background: rgba(0,0,0,0.5); opacity: ${locked ? 0.6 : 1}; height: 180px; text-align:left;">
+            <div>
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <span style="font-family:var(--font-title); font-size:12px; color: ${locked ? 'var(--text-muted)' : 'var(--gold-light)'}; font-weight:bold;">${locked ? '🔒 ' : ''}${name}</span>
+                <span style="font-size:9px; color:#a0aec0; background:rgba(255,255,255,0.06); padding:2px 6px; border-radius:10px; text-transform:uppercase;">${cat}</span>
+              </div>
+              <div style="font-size:10.5px; color:#cbd5e0; line-height:1.3; margin-bottom:8px; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;">${usecase || desc}</div>
+              <div style="font-size:9.5px; color:var(--text-dim);"><span style="color:var(--gold);">Complexity:</span> ${complexity || '-'}</div>
+            </div>
+            <div style="margin-top:10px; display:flex; justify-content:space-between; align-items:center;">
+              <button class="civ-btn civ-btn-sm" style="font-size:9px; padding:2px 6px; text-transform:none; border-color:var(--text-dim); color:var(--text-dim);" onclick="openAcademyInsights('${id}')">📖 Theory</button>
+              ${locked ? 
+                `<button class="civ-btn civ-btn-sm" style="font-size:9px; padding:2px 6px; text-transform:none;" disabled>🔒 Locked</button>` :
+                `<button class="civ-btn civ-btn-sm" style="font-size:9px; padding:2px 6px; text-transform:none; border-color:var(--gold); color:var(--gold);" onclick="selectAlgo('${id}'); closeAlgoDirectory();">⚡ Run & Select</button>`
+              }
+            </div>
+          </div>
+        `;
+      }
+      grid.innerHTML = html || '<div style="color:var(--text-dim); font-size:12px; grid-column: 1/-1; text-align:center; padding:20px;">No algorithms match filters.</div>';
+    }
+
+    function filterAlgoDirectory() {
+      renderAlgoDirectoryGrid();
+    }
+
     // ═══════════════════════════════════════════════════════════════════
     // STATE
     // ═══════════════════════════════════════════════════════════════════
@@ -380,6 +468,7 @@
       running: false,
       selectedAlgo: null,
       selectedNodes: [],
+      currentScope: { mode: 'selection', radius_km: 5, max_nodes: 1800 },
       algos: {},
       quests: [],
       activeQuestId: null,
@@ -539,6 +628,8 @@
       
       if (type === 'start') {
         state.selectedNodes[0] = nearestNodeId;
+        const startInput = document.getElementById('start-place-input');
+        if (startInput) startInput.value = name;
         if (state.startMapMarker) state.map.removeLayer(state.startMapMarker);
         
         state.startMapMarker = L.circleMarker(snappedCoords, {
@@ -552,6 +643,8 @@
         state.startMapMarker.openPopup();
       } else {
         state.selectedNodes[1] = nearestNodeId;
+        const endInput = document.getElementById('end-place-input');
+        if (endInput) endInput.value = name;
         if (state.endMapMarker) state.map.removeLayer(state.endMapMarker);
         
         state.endMapMarker = L.circleMarker(snappedCoords, {
@@ -695,8 +788,18 @@
         document.getElementById('city-info').innerHTML =
           `<strong>${data.city_name}</strong> — ${data.node_count} nodes, ${data.edge_count} edges (${data.source})`;
 
+        const quality = data.graph?.data_quality || {};
+        const qualityColor = quality.is_live_or_cached_osm ? 'var(--teal)' : '#E24B4A';
+        const detail = quality.graph_detail || data.graph?.graph_detail || {};
+        document.getElementById('city-info').innerHTML =
+          `<strong>${data.city_name}</strong> - ${data.node_count} nodes, ${data.edge_count} edges
+           <div style="margin-top:4px;color:${qualityColor};">Data: ${quality.source || data.source}</div>
+           ${detail.original_component_nodes ? `<div style="font-size:10px;color:var(--gold-light);line-height:1.35;">Full connected OSM graph: ${Number(detail.original_component_nodes).toLocaleString()} nodes; rendered sample: ${Number(detail.rendered_nodes || data.node_count).toLocaleString()}</div>` : ''}
+           ${quality.warning ? `<div style="font-size:10px;color:var(--text-muted);line-height:1.35;">${quality.warning}</div>` : ''}`;
+
         setStatus(`${data.city_name} loaded`);
         showToast(`${data.city_name} loaded — ${data.node_count} intersections`, 'success');
+        updateScopeHint();
         updateLocalitySelectors(cityId);
       } catch (e) {
         setStatus('Failed to load city');
@@ -925,7 +1028,175 @@
     // ═══════════════════════════════════════════════════════════════════
     // ALGORITHM EXECUTION (WebSocket)
     // ═══════════════════════════════════════════════════════════════════
-    function runAlgorithm(algoName) {
+    const ROUTE_ALGOS = new Set(['dijkstra', 'astar', 'risk_aware', 'flood_aware', 'contraction']);
+    const TWO_POINT_ALGOS = new Set(['dijkstra', 'astar', 'risk_aware', 'flood_aware', 'contraction', 'edmonds_karp']);
+
+    function buildAlgorithmScope() {
+      const mode = document.getElementById('scope-mode')?.value || 'selection';
+      const radius = parseFloat(document.getElementById('scope-radius')?.value || '5');
+      const maxNodes = mode === 'all' ? 9000 : mode === 'radius' ? 1200 : 1800;
+      state.currentScope = { mode, radius_km: radius, max_nodes: maxNodes };
+      return state.currentScope;
+    }
+
+    function updateScopeHint() {
+      const scope = buildAlgorithmScope();
+      const full = state.graphData?.data_quality?.graph_detail?.original_component_nodes;
+      const rendered = state.graphData?.node_count;
+      let text = '';
+      if (scope.mode === 'all') {
+        text = `Runs on the whole rendered graph (${rendered || '--'} intersections). Use this for final city-wide demos.`;
+      } else if (scope.mode === 'radius') {
+        text = `Runs within ${scope.radius_km} km of the selected start node, capped at ${scope.max_nodes} intersections.`;
+      } else {
+        text = `Runs around the selected start/end corridor with a ${scope.radius_km} km buffer, capped at ${scope.max_nodes} intersections.`;
+      }
+      if (full) text += ` Full OSM component tracked: ${Number(full).toLocaleString()} nodes.`;
+      const el = document.getElementById('scope-hint');
+      if (el) el.textContent = text;
+    }
+
+    function buildRouteParams() {
+      const start = state.selectedNodes[0];
+      const end = state.selectedNodes[1];
+      const sourceName = document.getElementById('start-place-input')?.value?.trim();
+      const destName = document.getElementById('end-place-input')?.value?.trim();
+      return {
+        source_name: sourceName || undefined,
+        dest_name: destName || undefined,
+        start_node: start,
+        end_node: end,
+        source_node: start,
+        sink_node: end,
+        scope: buildAlgorithmScope(),
+      };
+    }
+
+    function hasTwoPointInput() {
+      const sourceName = document.getElementById('start-place-input')?.value?.trim();
+      const destName = document.getElementById('end-place-input')?.value?.trim();
+      return Boolean((sourceName && destName) || (state.selectedNodes[0] && state.selectedNodes[1]));
+    }
+
+    function resetSignalMapProgress() {
+      state.profile = {
+        _id: 'guest',
+        username: 'Guest',
+        coins: 2000,
+        research_points: 100,
+        level: 1,
+        xp: 0,
+        xp_to_next: 150,
+        happiness: 75,
+        population: 100,
+        current_turn: 1,
+        unlocked_algos: ['dijkstra', 'prim', 'kruskal', 'astar', 'risk_aware', 'edmonds_karp', 'pagerank', 'leiden', 'k_median', 'contraction'],
+        completed_quests: []
+      };
+      state.runHistory = [];
+      state.selectedNodes = [];
+      state.selectedAlgo = null;
+      localStorage.setItem('sc_profile', JSON.stringify(state.profile));
+      localStorage.setItem('sc_run_history', '[]');
+      if (typeof clearHighlights === 'function') clearHighlights();
+      if (typeof resetNodeSelectionOnly === 'function') resetNodeSelectionOnly();
+      if (state.graphData) renderGraph(state.graphData, state.graphData.lat, state.graphData.lon);
+      updateHUD();
+      renderAnalyticsChart();
+      renderComparisonTable();
+      document.getElementById('report-card').innerHTML = '';
+      document.getElementById('xai-panel').innerHTML = `<p class="highlight">Signal Map reset. Coins, RP, selections, overlays, and run history are back to the default demo state.</p>`;
+      showToast('Signal Map reset to demo state.', 'success');
+    }
+
+    async function runDefaultDemo() {
+      if (!state.graphData) {
+        showToast('Load Bengaluru first, then run the demo.', 'warning');
+        return;
+      }
+      document.getElementById('start-place-input').value = 'Jayanagar';
+      document.getElementById('end-place-input').value = 'MG Road';
+      const dijkstra = document.querySelector('.compare-check[value="dijkstra"]');
+      const astar = document.querySelector('.compare-check[value="astar"]');
+      const risk = document.querySelector('.compare-check[value="risk_aware"]');
+      [dijkstra, astar, risk].forEach(el => { if (el) el.checked = true; });
+      document.getElementById('xai-panel').innerHTML = `<p class="highlight">Default demo loaded: Jayanagar to MG Road. It compares Dijkstra, A*, and risk-aware routing on the same real Bengaluru graph.</p>`;
+      await compareSelectedAlgorithms();
+    }
+
+    function showRouteSummary(result, algoName) {
+      const metrics = result.metrics || {};
+      const quality = result.data_quality || {};
+      document.getElementById('report-section').style.display = '';
+      document.getElementById('report-card').innerHTML = `
+        <div class="report-grade" style="font-size:14px;color:var(--gold-light);">${result.algorithm_name || algoName}</div>
+        <div style="font-size:11px;color:var(--text-dim);line-height:1.5;margin-top:8px;">
+          <div><strong>Distance:</strong> ${((metrics.length_m || 0) / 1000).toFixed(2)} km</div>
+          <div><strong>Estimated time:</strong> ${(metrics.travel_minutes || 0).toFixed(1)} min</div>
+          <div><strong>Road segments:</strong> ${metrics.hops || 0}</div>
+          <div><strong>Ops:</strong> ${result.ops || 0} / theoretical ${result.theoretical_ops || '-'}</div>
+          <div><strong>Runtime:</strong> ${result.runtime_ms || 0} ms</div>
+          <div><strong>Data:</strong> ${quality.source || 'unknown'}</div>
+          ${quality.warning ? `<div style="color:${quality.is_live_or_cached_osm ? 'var(--text-muted)' : '#E24B4A'};margin-top:6px;">${quality.warning}</div>` : ''}
+        </div>
+      `;
+    }
+
+    async function runRouteAlgorithm(algoName, info) {
+      if (!hasTwoPointInput()) {
+        showToast('Select both Start and End points before running a route algorithm.', 'warning');
+        document.getElementById('xai-panel').innerHTML = `<p class="highlight">Choose two Bengaluru points first: use the Start/End locality dropdowns or click two map nodes.</p>`;
+        return;
+      }
+
+      state.running = true;
+      resetVisualization(false);
+      setStatus(`Planning ${info.name || algoName} route...`);
+      document.getElementById('btn-pause').style.display = 'none';
+      document.getElementById('btn-step').style.display = 'none';
+      document.getElementById('report-section').style.display = 'none';
+
+      try {
+        const res = await fetch('/api/route/plan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            city_id: state.cityId || 'bengaluru',
+            algorithm: algoName,
+            params: buildRouteParams(),
+          }),
+        });
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.detail || 'Route planning failed');
+
+        if (result.path) {
+          result.path.forEach((nodeId, idx) => {
+            setNodeColor(nodeId, NODE_COLORS.path, 6);
+            if (idx < result.path.length - 1) setEdgeColor(nodeId, result.path[idx + 1], EDGE_COLORS.path);
+          });
+        }
+        document.getElementById('xai-panel').innerHTML = `
+          ${(result.xai_steps || [result.xai_text || 'Route complete.']).map(step => `<p>${step}</p>`).join('')}
+        `;
+        updateStats({
+          algo_name: algoName,
+          ops_so_far: result.ops || 0,
+          theoretical_complexity: (state.algos[algoName] || {}).complexity || '-',
+          theoretical_n: state.graphData?.node_count || 0,
+          wall_ms: result.runtime_ms || 0,
+        });
+        showRouteSummary(result, algoName);
+        setStatus(`${info.name || algoName} route complete`);
+        checkQuestCompletion(algoName);
+      } catch (err) {
+        showToast(err.message, 'error');
+        setStatus('Route planning failed');
+      } finally {
+        state.running = false;
+      }
+    }
+
+    async function runAlgorithm(algoName) {
       if (state.running) {
         showToast('Algorithm already running!', 'warning');
         return;
@@ -935,13 +1206,24 @@
         return;
       }
 
+      const info = state.algos[algoName] || {};
+      if (TWO_POINT_ALGOS.has(algoName) && !hasTwoPointInput()) {
+        showToast('Select both Start and End points before running this two-point algorithm.', 'warning');
+        document.getElementById('xai-panel').innerHTML = `<p class="highlight">This algorithm needs a source and destination. Use the locality selectors or click two map nodes.</p>`;
+        return;
+      }
+
+      if (ROUTE_ALGOS.has(algoName)) {
+        await runRouteAlgorithm(algoName, info);
+        return;
+      }
+
       state.running = true;
       state.stepLog = [];
       state.stepIndex = 0;
       state.paused = false;
       resetVisualization(false);
 
-      const info = state.algos[algoName] || {};
       setStatus(`Running ${info.name || algoName}...`);
       document.getElementById('btn-pause').style.display = '';
       document.getElementById('btn-step').style.display = '';
@@ -961,6 +1243,7 @@
         params.source_node = state.selectedNodes[0];
         params.sink_node = state.selectedNodes[1];
       }
+      params.scope = buildAlgorithmScope();
 
       // Connect WebSocket
       const wsUrl = `ws://${window.location.host}/ws/algorithm`;
@@ -998,6 +1281,9 @@
             setStatus(`${info.name || algoName} — Complete`);
             if (summary.xai_text) {
               document.getElementById('xai-panel').innerHTML = `<p class="highlight">${summary.xai_text}</p>`;
+            }
+            if (summary.scope && summary.scope.mode !== 'all') {
+              document.getElementById('xai-panel').innerHTML += `<p>Scope used: ${summary.scope.mode}, ${summary.scope.node_count} intersections and ${summary.scope.edge_count} roads from ${summary.scope.full_node_count} rendered intersections.</p>`;
             }
             if (summary.grade) {
               showReport(summary.grade, summary, algoName);
@@ -1116,6 +1402,10 @@
       if (startSel) startSel.value = '';
       const endSel = document.getElementById('end-locality-selector');
       if (endSel) endSel.value = '';
+      const startInput = document.getElementById('start-place-input');
+      if (startInput) startInput.value = '';
+      const endInput = document.getElementById('end-place-input');
+      if (endInput) endInput.value = '';
       state.graphLayer.eachLayer(l => {
         if (l.nodeId !== undefined) {
           l.setStyle({ fillColor: '#5A6474', fillOpacity: 0.7, radius: 3 });
@@ -1288,6 +1578,11 @@
         showToast('Check at least two unlocked algorithms to compare.', 'warning');
         return;
       }
+      if (checked.some(algo => TWO_POINT_ALGOS.has(algo)) && (!state.selectedNodes[0] || !state.selectedNodes[1])) {
+        showToast('Select Start and End points before comparing route or flow algorithms.', 'warning');
+        document.getElementById('xai-panel').innerHTML = `<p class="highlight">Comparison includes a two-point algorithm, so choose a source and destination first.</p>`;
+        return;
+      }
       const params = {};
       if (state.selectedNodes.length >= 1) params.start_node = state.selectedNodes[0];
       if (state.selectedNodes.length >= 2) {
@@ -1295,6 +1590,7 @@
         params.source_node = state.selectedNodes[0];
         params.sink_node = state.selectedNodes[1];
       }
+      params.scope = buildAlgorithmScope();
       setStatus(`Comparing ${checked.length} algorithms...`);
       try {
         const res = await fetch('/api/algorithms/compare', {
@@ -1314,13 +1610,14 @@
           </tr>`).join('');
         document.getElementById('xai-panel').innerHTML = `
           <h4 style="color:var(--gold);margin-bottom:6px;">Algorithm Comparison</h4>
-          <p>Same city, same selected source/target, same weather-adjusted road weights. Use this to compare practical fit, Big-O, operation count, and game reward quality.</p>
+          <p>Same city, same selected source/target, same scope, same weather-adjusted road weights. Use this to compare practical fit, Big-O, operation count, and game reward quality.</p>
           <table style="width:100%;font-size:10px;border-collapse:collapse;margin-top:8px;">
             <thead><tr style="color:var(--text-muted);text-align:left;"><th>Algorithm</th><th>Big-O</th><th>Ops</th><th>Eff.</th><th>Grade</th></tr></thead>
             <tbody>${rows}</tbody>
           </table>`;
         document.getElementById('algo-stats').innerHTML = `
           <div><strong>${data.node_count}</strong> intersections, <strong>${data.edge_count}</strong> roads</div>
+          <div style="margin-top:6px;color:var(--text-dim);">Scope: ${params.scope.mode}, max ${params.scope.max_nodes} intersections</div>
           <div style="margin-top:6px;color:var(--text-dim);">Weather: ${data.weather ? `${data.weather.type} (${data.weather.effect_weight_multiplier}x road weight, ${data.weather.effect_capacity_multiplier}x capacity)` : 'clear/default'}</div>`;
         setStatus('Comparison complete');
       } catch (e) {
@@ -2443,6 +2740,31 @@
           <h4 style="color:var(--gold-light); margin-bottom:4px; font-family:var(--font-title); font-size:11px; letter-spacing:0.5px;">VISUALIZATION COLOR KEY</h4>
           <p id="insights-colors" style="color:var(--text-dim); font-size:11.5px;"></p>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Algorithm Directory Modal ═══ -->
+  <div class="modal-backdrop" id="algo-directory-modal" style="display:none; justify-content:center; align-items:center; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:9999;">
+    <div class="civ-panel modal-content" style="max-width: 900px; width: 95%; max-height: 90vh; display:flex; flex-direction:column; padding: 24px; position:relative; border: 2px solid var(--gold); background: var(--bg-card);">
+      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--gold); padding-bottom:12px; margin-bottom:16px;">
+        <h2 style="font-family:var(--font-title); color:var(--gold); margin:0; font-size:20px; letter-spacing:1.5px;">📚 Algorithm Directory & Reference Library</h2>
+        <button class="civ-btn civ-btn-sm" onclick="closeAlgoDirectory()">✕ Close</button>
+      </div>
+      <div style="margin-bottom: 16px; display:flex; gap:12px; align-items:center;">
+        <input type="text" id="algo-dir-search" placeholder="Search algorithms by name, category, or complexity..." style="flex:1; padding:10px; background:rgba(0,0,0,0.3); border:1px solid rgba(197,160,89,0.3); color:#fff; font-family:var(--font-body); font-size:13px; border-radius:4px;" oninput="filterAlgoDirectory()">
+        <select id="algo-dir-category-filter" style="padding:10px; background:rgba(0,0,0,0.3); border:1px solid rgba(197,160,89,0.3); color:#fff; font-family:var(--font-body); font-size:13px; border-radius:4px;" onchange="filterAlgoDirectory()">
+          <option value="all">All Categories</option>
+          <option value="mst">Minimum Spanning Trees (MST)</option>
+          <option value="pathfinding">Pathfinding & Routing</option>
+          <option value="flow">Network Flow</option>
+          <option value="analysis">Network Analysis</option>
+          <option value="optimization">Urban Optimization</option>
+          <option value="scheduling">Scheduling</option>
+        </select>
+      </div>
+      <div id="algo-directory-grid" style="flex:1; overflow-y:auto; display:grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap:12px; padding-right:6px;">
+        <!-- Filled dynamically -->
       </div>
     </div>
   </div>

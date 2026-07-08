@@ -9,6 +9,8 @@ from auth.middleware import get_current_user_optional
 from database.connection import get_db
 from pipeline.city_loader import load_city_graph
 from pipeline.geocoder import geocode_place, snap_to_node, GeocodingError
+from pipeline.graph_scope import scope_graph_data
+from pipeline.routing_engine import compare_routes, plan_route, build_nx_graph, resolve_endpoints
 from routers.city import get_cached_city
 
 logger = logging.getLogger(__name__)
@@ -68,9 +70,60 @@ ALGORITHMS = {
 }
 
 
+ALGORITHMS.update({
+    "astar": _algo(
+        "A* Goal-Directed Routing",
+        "pathfinding",
+        2,
+        10,
+        "Uses straight-line geographic distance as an admissible heuristic to guide shortest-path search.",
+        "Compare map-engine style goal-directed routing against Dijkstra on selected Bengaluru endpoints.",
+        "O((V + E) log V) worst-case",
+        "Route, settled nodes, runtime, heuristic explanation",
+    ),
+    "risk_aware": _algo(
+        "Risk-Aware Multi-Criteria Route",
+        "pathfinding",
+        3,
+        14,
+        "Reweights roads using travel time, nearby crash blackspots, road class, and connector penalties.",
+        "Find a safer emergency route when the shortest route passes crash-prone junctions.",
+        "O((V + E) log V)",
+        "Safest path, crash-risk score, distance/time tradeoff",
+    ),
+    "flood_aware": _algo(
+        "Dynamic Flood-Aware Route",
+        "pathfinding",
+        3,
+        14,
+        "Applies a large penalty to user-selected flooded/blocked nodes and reruns shortest path.",
+        "Model monsoon closures and compare original route versus rerouted path.",
+        "O((V + E) log V)",
+        "Rerouted path, avoided flooded nodes, distance/time penalty",
+    ),
+})
+
+CORE_ALGORITHMS = {
+    key: ALGORITHMS[key]
+    for key in [
+        "dijkstra",
+        "astar",
+        "risk_aware",
+        "flood_aware",
+        "contraction",
+        "edmonds_karp",
+        "leiden",
+        "pagerank",
+        "k_median",
+        "prim",
+        "kruskal",
+    ]
+}
+
+
 @router.get("/api/algorithms")
 async def list_algorithms():
-    return ALGORITHMS
+    return CORE_ALGORITHMS
 
 
 def _graph_from_data(graph_data: dict) -> nx.Graph:
@@ -107,6 +160,25 @@ async def dispatch_algorithm(algorithm: str, graph: nx.Graph, graph_data: dict, 
             return _mst_result(tree, graph)
         if algorithm == "dijkstra":
             return _dijkstra_result(graph, params, graph_data)
+        if algorithm in {"astar", "risk_aware", "flood_aware"}:
+            route_params = dict(params)
+            route_params["algorithm"] = algorithm
+            routed = plan_route(graph_data, route_params)
+            return {
+                "path": routed["path"],
+                "visited_order": routed["path"],
+                "dist": routed["metrics"]["length_m"],
+                "distance": routed["metrics"]["length_m"],
+                "source": routed["source"],
+                "target": routed["target"],
+                "ops": routed["ops"],
+                "theoretical_ops": routed["theoretical_ops"],
+                "runtime_ms": routed["runtime_ms"],
+                "metrics": routed["metrics"],
+                "path_coordinates": routed["path_coordinates"],
+                "xai_text": routed["xai_text"],
+                "data_quality": routed["data_quality"],
+            }
         if algorithm == "contraction":
             return _contraction_result(graph, params, graph_data)
         if algorithm == "edmonds_karp":
@@ -191,6 +263,24 @@ def _mst_result(tree: nx.Graph, graph: nx.Graph) -> dict:
 
 
 def _dijkstra_result(graph: nx.Graph, params: dict, graph_data: dict | None = None) -> dict:
+    if graph_data is not None:
+        routed = plan_route(graph_data, {**params, "algorithm": "dijkstra"})
+        return {
+            "path": routed["path"],
+            "visited_order": routed["path"],
+            "dist": routed["metrics"]["length_m"],
+            "distance": routed["metrics"]["length_m"],
+            "source": routed["source"],
+            "target": routed["target"],
+            "ops": routed["ops"],
+            "theoretical_ops": routed["theoretical_ops"],
+            "runtime_ms": routed["runtime_ms"],
+            "metrics": routed["metrics"],
+            "path_coordinates": routed["path_coordinates"],
+            "xai_text": routed["xai_text"],
+            "data_quality": routed["data_quality"],
+        }
+
     source, target = _node_pair(graph, params, graph_data)
     if source is None:
         return {"path": [], "visited_order": [], "dist": 0, "ops": 1, "theoretical_ops": 1}
@@ -221,6 +311,25 @@ def _flow_result(graph: nx.Graph, params: dict, graph_data: dict | None = None) 
 
 def _contraction_result(graph: nx.Graph, params: dict, graph_data: dict | None = None) -> dict:
     """Contraction Hierarchies: proper CH-aware shortest path."""
+    if graph_data is not None:
+        routed = plan_route(graph_data, {**params, "algorithm": "contraction"})
+        return {
+            "path": routed["path"],
+            "visited_order": routed["path"],
+            "dist": routed["metrics"]["length_m"],
+            "distance": routed["metrics"]["length_m"],
+            "source": routed["source"],
+            "target": routed["target"],
+            "shortcuts_used": max(0, len(routed["path"]) - 2),
+            "ops": routed["ops"],
+            "theoretical_ops": routed["theoretical_ops"],
+            "runtime_ms": routed["runtime_ms"],
+            "metrics": routed["metrics"],
+            "path_coordinates": routed["path_coordinates"],
+            "xai_text": routed["xai_text"],
+            "data_quality": routed["data_quality"],
+        }
+
     source, target = _node_pair(graph, params, graph_data)
     if source is None:
         return {"path": [], "visited_order": [], "dist": 0, "ops": 1, "theoretical_ops": 1}
@@ -320,6 +429,7 @@ async def run_algorithm(payload: dict, user=Depends(get_current_user_optional)):
     if not graph_data:
         raise HTTPException(status_code=404, detail=f"City '{city_id}' not loaded. Call /api/load-city first.")
 
+    graph_data = scope_graph_data(graph_data, params)
     graph = _graph_from_data(graph_data)
     result = await dispatch_algorithm(algorithm, graph, graph_data, params)
     ops = result.get("ops", 1)
@@ -362,6 +472,85 @@ async def run_algorithm(payload: dict, user=Depends(get_current_user_optional)):
     return result
 
 
+@router.post("/api/route/plan")
+async def plan_city_route(payload: dict):
+    city_id = payload.get("city_id", "bengaluru")
+    params = dict(payload.get("params", {}))
+    params["city_id"] = city_id
+    params["algorithm"] = payload.get("algorithm", params.get("algorithm", "dijkstra"))
+
+    full_graph_data = get_cached_city(city_id) or await load_city_graph(city_id)
+    if not full_graph_data:
+        raise HTTPException(status_code=404, detail=f"City '{city_id}' not loaded.")
+    
+    # Try scoped first
+    try:
+        scoped_graph_data = scope_graph_data(full_graph_data, params)
+        g = build_nx_graph(scoped_graph_data)
+        endpoints = resolve_endpoints(scoped_graph_data, params)
+        if endpoints.source in g and endpoints.target in g and nx.has_path(g, endpoints.source, endpoints.target):
+            return plan_route(scoped_graph_data, params)
+    except Exception:
+        pass
+
+    # Fallback to full graph
+    try:
+        full_params = dict(params)
+        full_params["scope"] = {"mode": "all"}
+        res = plan_route(full_graph_data, full_params)
+        if "xai_steps" in res:
+            res["xai_steps"].insert(0, "[Notice] Scoped graph was disconnected. Routing performed on full city graph.")
+        if "xai_text" in res:
+            res["xai_text"] = "[Notice] Scoped graph was disconnected. Routing performed on full city graph. " + res["xai_text"]
+        return res
+    except Exception as exc:
+        logger.exception("Route planning failed even on full graph")
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.post("/api/route/compare")
+async def compare_city_routes(payload: dict):
+    city_id = payload.get("city_id", "bengaluru")
+    params = dict(payload.get("params", {}))
+    params["city_id"] = city_id
+    algorithms = payload.get("algorithms") or ["dijkstra", "astar", "risk_aware", "contraction"]
+
+    full_graph_data = get_cached_city(city_id) or await load_city_graph(city_id)
+    if not full_graph_data:
+        raise HTTPException(status_code=404, detail=f"City '{city_id}' not loaded.")
+    
+    # Try scoped first
+    try:
+        scoped_graph_data = scope_graph_data(full_graph_data, params)
+        g = build_nx_graph(scoped_graph_data)
+        endpoints = resolve_endpoints(scoped_graph_data, params)
+        if endpoints.source in g and endpoints.target in g and nx.has_path(g, endpoints.source, endpoints.target):
+            return {
+                "city_id": city_id,
+                "node_count": scoped_graph_data.get("node_count"),
+                "edge_count": scoped_graph_data.get("edge_count"),
+                "data_quality": scoped_graph_data.get("data_quality", {}),
+                "results": compare_routes(scoped_graph_data, params, algorithms[:5]),
+            }
+    except Exception:
+        pass
+
+    # Fallback to full graph
+    try:
+        full_params = dict(params)
+        full_params["scope"] = {"mode": "all"}
+        return {
+            "city_id": city_id,
+            "node_count": full_graph_data.get("node_count"),
+            "edge_count": full_graph_data.get("edge_count"),
+            "data_quality": full_graph_data.get("data_quality", {}),
+            "results": compare_routes(full_graph_data, full_params, algorithms[:5]),
+        }
+    except Exception as exc:
+        logger.exception("Route comparison failed even on full graph")
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
 @router.post("/api/algorithms/compare")
 async def compare_algorithms(payload: dict):
     algorithms = payload.get("algorithms") or []
@@ -374,6 +563,7 @@ async def compare_algorithms(payload: dict):
     if not graph_data:
         raise HTTPException(status_code=404, detail=f"City '{city_id}' not loaded.")
 
+    graph_data = scope_graph_data(graph_data, params)
     graph = _graph_from_data(graph_data)
     results = []
     for algo in algorithms[:6]:

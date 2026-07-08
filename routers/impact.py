@@ -14,6 +14,7 @@ from pydantic import BaseModel
 
 from data.civic import loader
 from pipeline.city_loader import load_city_graph, slugify_city
+from pipeline.routing_engine import compare_routes, plan_route, resilient_k_routes
 from routers.algorithms import _graph_from_data
 
 logger = logging.getLogger(__name__)
@@ -37,6 +38,26 @@ class BackboneRequest(BaseModel):
     facility_type: str = "hospital"
     ward_id: Optional[str] = "all"
     city_id: str = "bengaluru"
+
+
+class RouteImpactRequest(BaseModel):
+    city_id: str = "bengaluru"
+    source_name: Optional[str] = None
+    dest_name: Optional[str] = None
+    start_node: Optional[str] = None
+    end_node: Optional[str] = None
+    flooded_nodes: List[str] = []
+    algorithms: List[str] = ["dijkstra", "astar", "risk_aware", "contraction"]
+    k: int = 4
+
+
+class CivicOptimizerRequest(BaseModel):
+    city_id: str = "bengaluru"
+    facility_type: str = "hospital"
+    k: int = 4
+    candidate_pool: int = 90
+    max_iterations: int = 18
+    equity_weight: float = 0.38
 
 
 # Ward center database for Bengaluru.
@@ -63,6 +84,46 @@ def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
 def _get_travel_time_mins(distance_m: float) -> float:
     """Assume average urban speed of 30 km/h (500 meters per minute)."""
     return distance_m / 500.0
+
+
+def _feature_centroid(feature: dict) -> tuple[float, float]:
+    """Return a simple centroid for Polygon/MultiPolygon GeoJSON features."""
+    geom = feature.get("geometry", {})
+    coords = geom.get("coordinates", [])
+    points: list[tuple[float, float]] = []
+
+    def collect(ring):
+        for item in ring:
+            if isinstance(item, list) and len(item) >= 2 and isinstance(item[0], (int, float)):
+                points.append((float(item[1]), float(item[0])))
+            elif isinstance(item, list):
+                collect(item)
+
+    collect(coords)
+    if not points:
+        props = feature.get("properties", {})
+        return float(props.get("centroid_lat", 12.9716)), float(props.get("centroid_lon", 77.5946))
+    return sum(p[0] for p in points) / len(points), sum(p[1] for p in points) / len(points)
+
+
+def _nearest_graph_node_by_latlon(nx_graph: nx.Graph, lat: float, lon: float) -> str:
+    return min(
+        nx_graph.nodes,
+        key=lambda n: (float(nx_graph.nodes[n].get("lat", 0.0)) - lat) ** 2
+        + (float(nx_graph.nodes[n].get("lon", 0.0)) - lon) ** 2,
+    )
+
+
+def _gini(values: list[float]) -> float:
+    if not values:
+        return 0.0
+    ordered = sorted(max(0.0, v) for v in values)
+    total = sum(ordered)
+    if total <= 0:
+        return 0.0
+    n = len(ordered)
+    weighted = sum((idx + 1) * value for idx, value in enumerate(ordered))
+    return round((2 * weighted) / (n * total) - (n + 1) / n, 4)
 
 
 # ── ENDPOINTS ────────────────────────────────────────────────────────────
@@ -230,6 +291,352 @@ async def facility_siting(payload: SitingRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/route-lab")
+async def route_lab(payload: RouteImpactRequest):
+    """
+    Compare route algorithms on the same selected Bengaluru origin/destination.
+    This is the main DAA-viva endpoint: it exposes inputs, graph provenance,
+    complexity, measured runtime, and explanation text for each algorithm.
+    """
+    try:
+        city_key = slugify_city(payload.city_id)
+        graph_data = await load_city_graph(city_key)
+        params = {
+            "city_id": city_key,
+            "source_name": payload.source_name,
+            "dest_name": payload.dest_name,
+            "start_node": payload.start_node,
+            "end_node": payload.end_node,
+            "flooded_nodes": payload.flooded_nodes,
+        }
+        algos = payload.algorithms or ["dijkstra", "astar", "risk_aware", "contraction"]
+        results = compare_routes(graph_data, params, algos[:5])
+        run_id = str(uuid.uuid4())[:8]
+        run_result = {
+            "run_id": run_id,
+            "problem_type": "route_lab",
+            "city_id": city_key,
+            "source": payload.source_name or payload.start_node,
+            "target": payload.dest_name or payload.end_node,
+            "data_quality": graph_data.get("data_quality", {}),
+            "results": results,
+            "xai_text": (
+                "Route Lab compares exact shortest path, goal-directed A*, risk-aware routing, "
+                "and CH-style query behavior on the same selected origin and destination."
+            ),
+        }
+        RUNS_DB[run_id] = run_result
+        return run_result
+    except Exception as e:
+        logger.exception("Error during route lab")
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/civic-service-optimizer")
+async def civic_service_optimizer(payload: CivicOptimizerRequest):
+    """
+    Research-grade non-routing showcase.
+
+    Teaching adaptation of 2024 knowledge-informed RL for large urban facility
+    location: start from a greedy k-median baseline, then perform learned-swap
+    style local improvement using ward demand, road-network travel time, and
+    equity penalty.
+    """
+    try:
+        city_key = slugify_city(payload.city_id)
+        graph_data = await load_city_graph(city_key)
+        nx_graph = _graph_from_data(graph_data)
+        wards = loader.get_ward_boundaries().get("features", [])
+        if not wards:
+            raise HTTPException(status_code=400, detail="BBMP ward data unavailable.")
+
+        demand_points = []
+        for idx, feature in enumerate(wards[:120]):
+            props = feature.get("properties", {})
+            lat, lon = _feature_centroid(feature)
+            node = _nearest_graph_node_by_latlon(nx_graph, lat, lon)
+            population = float(props.get("population", 50000))
+            income_idx = float(props.get("income_idx", 0.7))
+            demand_weight = population * (1.25 - min(max(income_idx, 0.1), 1.2) * 0.35)
+            demand_points.append({
+                "ward_id": str(props.get("KGISWardNo") or props.get("ward_id") or idx + 1),
+                "ward_name": props.get("KGISWardName") or props.get("ward_name") or f"Ward {idx + 1}",
+                "lat": lat,
+                "lon": lon,
+                "node": node,
+                "population": int(population),
+                "income_idx": round(income_idx, 3),
+                "demand_weight": demand_weight,
+            })
+
+        existing_nodes: list[str] = []
+        try:
+            from pipeline.geocoder import snap_to_node
+            for poi in loader.get_facility_pois(payload.facility_type):
+                snapped = snap_to_node(graph_data, poi["lat"], poi["lon"])
+                if snapped and snapped in nx_graph:
+                    existing_nodes.append(snapped)
+        except Exception:
+            existing_nodes = []
+        existing_nodes = list(dict.fromkeys(existing_nodes))
+
+        degree_ranked = sorted(
+            nx_graph.nodes,
+            key=lambda n: (
+                float(nx_graph.nodes[n].get("pop_weight", 1.0)),
+                int(nx_graph.nodes[n].get("street_count", 0)),
+            ),
+            reverse=True,
+        )
+        ward_nearest = [point["node"] for point in demand_points]
+        candidates = list(dict.fromkeys(ward_nearest + degree_ranked))[:max(payload.candidate_pool, payload.k)]
+        candidates = [c for c in candidates if c not in existing_nodes]
+        if len(candidates) < payload.k:
+            raise HTTPException(status_code=400, detail="Not enough candidate sites for optimizer.")
+
+        demand_nodes = [p["node"] for p in demand_points]
+        demand_weights = {p["node"]: p["demand_weight"] for p in demand_points}
+        demand_by_node = {p["node"]: p for p in demand_points}
+        distance_cache: dict[str, dict[str, float]] = {}
+
+        def distances_from(source: str) -> dict[str, float]:
+            if source not in distance_cache:
+                lengths = nx.single_source_dijkstra_path_length(nx_graph, source, weight="weight", cutoff=30000)
+                distance_cache[source] = {node: float(lengths.get(node, 30000.0)) for node in demand_nodes}
+            return distance_cache[source]
+
+        for node in existing_nodes[:25] + candidates:
+            distances_from(node)
+
+        def assignment(site_set: list[str]) -> tuple[float, list[dict], dict]:
+            active = list(dict.fromkeys(existing_nodes[:25] + site_set))
+            ward_rows = []
+            weighted_sum = 0.0
+            weighted_total = 0.0
+            minutes = []
+            for demand_node in demand_nodes:
+                best_site = min(active, key=lambda s: distances_from(s).get(demand_node, 30000.0)) if active else site_set[0]
+                dist_m = distances_from(best_site).get(demand_node, 30000.0)
+                minute = _get_travel_time_mins(dist_m)
+                point = demand_by_node[demand_node]
+                weight = demand_weights[demand_node]
+                weighted_sum += minute * weight
+                weighted_total += weight
+                minutes.append(minute)
+                ward_rows.append({
+                    "ward_id": point["ward_id"],
+                    "ward_name": point["ward_name"],
+                    "population": point["population"],
+                    "lat": round(point["lat"], 6),
+                    "lon": round(point["lon"], 6),
+                    "nearest_site": best_site,
+                    "travel_minutes": round(minute, 2),
+                    "served_under_10_min": minute <= 10.0,
+                })
+            avg = weighted_sum / max(weighted_total, 1.0)
+            inequality = _gini(minutes)
+            worst = max(minutes) if minutes else 0.0
+            uncovered = sum(1 for m in minutes if m > 10.0)
+            score = avg + payload.equity_weight * worst + payload.equity_weight * 18.0 * inequality
+            return score, ward_rows, {
+                "weighted_avg_minutes": round(avg, 2),
+                "worst_minutes": round(worst, 2),
+                "gini_access_inequality": inequality,
+                "wards_over_10_min": uncovered,
+                "objective_score": round(score, 3),
+            }
+
+        current_service_score, current_service_rows, current_service_metrics = assignment([])
+        selected: list[str] = []
+        remaining = list(candidates)
+        trace = []
+        for step in range(min(payload.k, len(remaining))):
+            scored = []
+            for candidate in remaining:
+                score, _, metrics = assignment(selected + [candidate])
+                scored.append((score, candidate, metrics))
+            scored.sort(key=lambda row: row[0])
+            _, chosen, metrics = scored[0]
+            selected.append(chosen)
+            remaining.remove(chosen)
+            trace.append({
+                "phase": "greedy_construct",
+                "step": step + 1,
+                "chosen_node": chosen,
+                "objective_score": metrics["objective_score"],
+                "why": "Selected the candidate that gave the largest population-weighted accessibility gain at this construction step.",
+            })
+
+        baseline_sites = list(selected)
+        baseline_score, baseline_rows, baseline_metrics = assignment(baseline_sites)
+        current_sites = list(baseline_sites)
+        current_score = baseline_score
+
+        for iteration in range(max(0, payload.max_iterations)):
+            improved = False
+            best_swap = None
+            for out_site in list(current_sites):
+                for in_site in remaining[: min(len(remaining), 45)]:
+                    trial = [s for s in current_sites if s != out_site] + [in_site]
+                    score, _, metrics = assignment(trial)
+                    demand_tie_break = -float(nx_graph.nodes[in_site].get("pop_weight", 1.0)) * 0.0001
+                    comparable_score = score + demand_tie_break
+                    if score + 1e-6 < current_score or (abs(score - current_score) <= 1e-6 and comparable_score < current_score):
+                        best_swap = (score, out_site, in_site, trial, metrics)
+                        improved = True
+            if not improved or not best_swap:
+                trace.append({
+                    "phase": "swap_stop",
+                    "step": iteration + 1,
+                    "why": "No candidate swap improved the accessibility-equity objective, so the local policy converged.",
+                })
+                break
+            real_score, out_site, in_site, trial, metrics = best_swap
+            current_sites = trial
+            current_score = real_score
+            if out_site in selected:
+                selected.remove(out_site)
+            if in_site not in selected:
+                selected.append(in_site)
+            if in_site in remaining:
+                remaining.remove(in_site)
+            remaining.append(out_site)
+            trace.append({
+                "phase": "knowledge_guided_swap",
+                "step": iteration + 1,
+                "removed_node": out_site,
+                "added_node": in_site,
+                "objective_score": metrics["objective_score"],
+                "why": "A swap reduced travel-time inequity while preserving strong demand coverage, simulating the edge-swap idea from knowledge-informed RL.",
+            })
+
+        final_score, final_rows, final_metrics = assignment(current_sites)
+        final_rows.sort(key=lambda row: row["travel_minutes"], reverse=True)
+
+        recommendations = []
+        for node in current_sites:
+            ndata = nx_graph.nodes[node]
+            recommendations.append({
+                "node_id": node,
+                "lat": round(float(ndata["lat"]), 6),
+                "lon": round(float(ndata["lon"]), 6),
+                "name": ndata.get("name") or f"Candidate site {node}",
+                "street_count": int(ndata.get("street_count", 0)),
+                "pop_weight": round(float(ndata.get("pop_weight", 1.0)), 2),
+            })
+
+        improvement = (current_service_metrics["objective_score"] - final_metrics["objective_score"]) / max(current_service_metrics["objective_score"], 0.1) * 100
+        run_id = str(uuid.uuid4())[:8]
+        run_result = {
+            "run_id": run_id,
+            "problem_type": "civic_service_optimizer",
+            "city_id": city_key,
+            "facility_type": payload.facility_type,
+            "k": len(current_sites),
+            "algorithm": {
+                "name": "Knowledge-Informed RL Swap Optimizer for Urban Facility Location",
+                "research_basis": {
+                    "title": "Large-scale Urban Facility Location Selection with Knowledge-informed Reinforcement Learning",
+                    "year": 2024,
+                    "url": "https://arxiv.org/abs/2409.01588",
+                    "note": "Signal City implements a deterministic teaching adaptation: greedy construction plus knowledge-guided swap improvement on BBMP ward demand and Bengaluru road travel-time data.",
+                },
+                "complexity": "O(I * k * C * (E log V + W)) after distance caching; facility location is NP-hard, so this uses an explainable heuristic.",
+            },
+            "data_used": {
+                "wards": len(demand_points),
+                "candidate_sites": len(candidates),
+                "existing_facilities": len(existing_nodes),
+                "road_nodes": nx_graph.number_of_nodes(),
+                "road_edges": nx_graph.number_of_edges(),
+                "sources": ["BBMP ward boundaries", "OSM road graph", "OSM civic facility POIs"],
+            },
+            "baseline": current_service_metrics,
+            "greedy_baseline": baseline_metrics,
+            "optimized": final_metrics,
+            "improvement_pct": round(max(0.0, improvement), 2),
+            "recommendations": recommendations,
+            "worst_served_wards": final_rows[:10],
+            "trace": trace[:24],
+            "xai_steps": [
+                "Problem: choose a small number of new civic service sites so high-demand BBMP wards get faster access.",
+                "Baseline: current service coverage is measured using existing civic POIs snapped to the Bengaluru road graph.",
+                "Greedy comparison: k-median adds one site at a time by minimizing population-weighted road travel time.",
+                "Research upgrade: the 2024 knowledge-informed RL idea is adapted as an explainable swap policy. It tests replacing one chosen site with a better candidate, guided by demand and road centrality.",
+                "Objective: weighted average minutes + worst-case penalty + access-inequality penalty. This avoids placing every site only in already well-connected central areas.",
+                f"Result: objective improved by {round(max(0.0, improvement), 2)}% over greedy baseline; {final_metrics['wards_over_10_min']} wards remain above 10 minutes.",
+            ],
+        }
+        RUNS_DB[run_id] = run_result
+        return run_result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Error during civic service optimizer")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/flood-reroute")
+async def flood_reroute(payload: RouteImpactRequest):
+    """Return baseline and flood-aware route for the same two selected points."""
+    try:
+        city_key = slugify_city(payload.city_id)
+        graph_data = await load_city_graph(city_key)
+        params = {
+            "city_id": city_key,
+            "source_name": payload.source_name,
+            "dest_name": payload.dest_name,
+            "start_node": payload.start_node,
+            "end_node": payload.end_node,
+        }
+        baseline = plan_route(graph_data, {**params, "algorithm": "dijkstra"})
+        rerouted = plan_route(graph_data, {**params, "algorithm": "flood_aware", "flooded_nodes": payload.flooded_nodes})
+        run_id = str(uuid.uuid4())[:8]
+        run_result = {
+            "run_id": run_id,
+            "problem_type": "flood_reroute",
+            "flooded_nodes": payload.flooded_nodes,
+            "baseline": baseline,
+            "rerouted": rerouted,
+            "extra_distance_m": round(rerouted["metrics"]["length_m"] - baseline["metrics"]["length_m"], 2),
+            "extra_minutes": round(rerouted["metrics"]["travel_minutes"] - baseline["metrics"]["travel_minutes"], 2),
+        }
+        RUNS_DB[run_id] = run_result
+        return run_result
+    except Exception as e:
+        logger.exception("Error during flood reroute")
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/resilience-ksp")
+async def resilience_ksp(payload: RouteImpactRequest):
+    """
+    Research-grade showcase endpoint: dynamic k-shortest route resilience.
+    Finds several alternative routes for the same origin/destination and ranks
+    them by time, crash-risk, flood exposure, and route diversity.
+    """
+    try:
+        city_key = slugify_city(payload.city_id)
+        graph_data = await load_city_graph(city_key)
+        params = {
+            "city_id": city_key,
+            "source_name": payload.source_name,
+            "dest_name": payload.dest_name,
+            "start_node": payload.start_node,
+            "end_node": payload.end_node,
+            "flooded_nodes": payload.flooded_nodes,
+        }
+        result = resilient_k_routes(graph_data, params, k=max(2, min(payload.k, 6)))
+        run_id = str(uuid.uuid4())[:8]
+        result["run_id"] = run_id
+        result["problem_type"] = "resilience_ksp"
+        RUNS_DB[run_id] = result
+        return result
+    except Exception as e:
+        logger.exception("Error during resilience KSP")
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 @router.post("/backbone-cost")
 async def backbone_cost(payload: BackboneRequest):
     """
@@ -346,6 +753,101 @@ async def backbone_cost(payload: BackboneRequest):
 
 @router.post("/transit-equity")
 async def transit_equity(city_id: str = "bengaluru"):
+    """Identify transit deserts with BMTC PageRank centrality and BBMP ward demand."""
+    try:
+        bmtc_graph = loader.get_bmtc_graph()
+        pagerank_scores = nx.pagerank(bmtc_graph, weight="weight")
+        wards_data = loader.get_ward_boundaries()
+        all_stops = list(bmtc_graph.nodes(data=True))
+
+        wards_result = []
+        for feature in wards_data.get("features", [])[:80]:
+            props = feature["properties"]
+            ward_id = str(props.get("KGISWardNo") or props.get("ward_id") or "")
+            ward_name = props.get("KGISWardName") or props.get("ward_name") or f"Ward {ward_id}"
+            population = int(props.get("population", 50000))
+            income_idx = float(props.get("income_idx", 0.75))
+            clat, clon = _feature_centroid(feature)
+
+            nearby_stops = []
+            for stop_id, sdata in all_stops:
+                distance_km = _haversine_km(sdata["lat"], sdata["lon"], clat, clon)
+                if distance_km <= 2.2:
+                    nearby_stops.append((stop_id, sdata, distance_km))
+            nearby_stops.sort(key=lambda row: row[2])
+
+            avg_centrality = 0.0
+            if nearby_stops:
+                avg_centrality = sum(pagerank_scores.get(sid, 0.0) for sid, _, _ in nearby_stops) / len(nearby_stops)
+
+            stop_access = len(nearby_stops) / max(population / 50000.0, 0.4)
+            centrality_access = avg_centrality * 10000
+            equity_need = 1.25 - min(max(income_idx, 0.2), 1.15) * 0.35
+            desert_index = (population / 50000.0) * equity_need / (max(stop_access, 0.25) * max(centrality_access, 0.18))
+
+            if len(nearby_stops) == 0:
+                classification = "Severe Transit Desert"
+            elif desert_index > 1.5:
+                classification = "Moderate Transit Desert"
+            else:
+                classification = "Well Connected"
+
+            wards_result.append({
+                "ward_id": ward_id,
+                "ward_name": ward_name,
+                "population": population,
+                "lat": round(clat, 6),
+                "lon": round(clon, 6),
+                "stop_count": len(nearby_stops),
+                "avg_centrality": round(avg_centrality * 10000, 2),
+                "desert_index": round(desert_index, 2),
+                "classification": classification,
+                "nearest_stops": [
+                    {
+                        "stop_id": sid,
+                        "name": sdata.get("name", sid),
+                        "lat": sdata["lat"],
+                        "lon": sdata["lon"],
+                        "distance_km": round(distance, 2),
+                        "pagerank": round(pagerank_scores.get(sid, 0.0) * 10000, 2),
+                    }
+                    for sid, sdata, distance in nearby_stops[:5]
+                ],
+                "xai_reason": (
+                    f"{ward_name} has population {population}, {len(nearby_stops)} nearby BMTC stops, "
+                    f"and average stop PageRank {round(avg_centrality * 10000, 2)}. "
+                    "High demand with low stop count or low network centrality increases the transit desert index."
+                ),
+            })
+
+        wards_result.sort(key=lambda w: w["desert_index"], reverse=True)
+        run_id = str(uuid.uuid4())[:8]
+        run_result = {
+            "run_id": run_id,
+            "problem_type": "transit_equity",
+            "underserved_wards": wards_result[:6],
+            "all_wards": wards_result,
+            "algorithm": {
+                "name": "PageRank Transit Centrality + BBMP Ward Demand Index",
+                "complexity": "PageRank O(I * E) plus ward-stop spatial join O(W * S)",
+                "purpose": "Find wards where public transport access is weak relative to population demand.",
+            },
+            "xai_steps": [
+                "BMTC stops are modeled as a graph and PageRank estimates which stops are structurally important in the bus network.",
+                "Each BBMP ward is matched to nearby bus stops around its centroid.",
+                "The transit desert index rises when a ward has high population, few nearby stops, or stops with low network centrality.",
+                "This is an access-equity analysis for deciding where to add stops, feeder services, or higher-frequency routes.",
+            ],
+        }
+        RUNS_DB[run_id] = run_result
+        return run_result
+    except Exception as e:
+        logger.exception("Error in transit equity calculation")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/transit-equity-legacy")
+async def transit_equity_legacy(city_id: str = "bengaluru"):
     """
     Identifies "transit deserts" by running Leiden community detection and PageRank
     on the BMTC bus network graph, cross-referenced with BBMP ward populations.

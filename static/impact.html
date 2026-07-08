@@ -3,918 +3,863 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SIGNAL CITY — Applied DAA Impact Console</title>
-  <meta name="description" content="Applied decision support console for Bengaluru urban planners.">
+  <title>SIGNAL CITY - Applied DAA Impact Console</title>
   <link rel="stylesheet" href="/static/css/civ6-theme.css">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
-    /* Premium dark aesthetics */
     body {
-      background-color: #0d1117;
-      color: #e2e8f0;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       margin: 0;
+      background: #0d1117;
+      color: #e2e8f0;
+      font-family: Inter, "Segoe UI", sans-serif;
       overflow: hidden;
     }
-    .resource-bar {
-      height: 50px;
-      background: #161b22;
-      border-bottom: 2px solid #c5a059;
+    .topbar {
+      height: 52px;
+      background: #151b23;
+      border-bottom: 1px solid #c5a059;
       display: flex;
+      align-items: center;
       justify-content: space-between;
-      align-items: center;
-      padding: 0 20px;
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      z-index: 1001;
+      padding: 0 18px;
+      box-sizing: border-box;
     }
-    .resource-group {
-      display: flex;
-      align-items: center;
-      gap: 15px;
+    .brand {
+      color: #dfc38a;
+      font-family: Georgia, serif;
+      letter-spacing: 2px;
+      font-weight: 700;
+      cursor: pointer;
     }
-    .game-layout {
-      display: flex;
-      height: calc(100vh - 50px);
-      margin-top: 50px;
+    .layout {
+      display: grid;
+      grid-template-columns: 430px 1fr 360px;
+      height: calc(100vh - 52px);
     }
-    .sidebar {
-      width: 440px;
-      background: rgba(22, 28, 36, 0.96);
-      border-right: 1px solid #c5a059;
-      box-shadow: 5px 0 15px rgba(0, 0, 0, 0.5);
-      display: flex;
-      flex-direction: column;
-      z-index: 1000;
+    .panel {
+      background: rgba(19, 25, 33, 0.98);
+      border-right: 1px solid rgba(197, 160, 89, 0.35);
       overflow-y: auto;
-      backdrop-filter: blur(8px);
     }
-    .map-container {
+    .right-panel {
+      border-left: 1px solid rgba(197, 160, 89, 0.35);
+      border-right: 0;
+    }
+    .section {
+      padding: 16px 18px;
+      border-bottom: 1px solid rgba(197, 160, 89, 0.15);
+    }
+    .title {
+      color: #dfc38a;
+      font-family: Georgia, serif;
+      font-size: 13px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+    .subtle {
+      color: #8a95a5;
+      font-size: 11px;
+      line-height: 1.45;
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .input, .select {
+      width: 100%;
+      box-sizing: border-box;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(197, 160, 89, 0.25);
+      color: #e2e8f0;
+      border-radius: 4px;
+      padding: 8px;
+      font-size: 12px;
+      outline: none;
+    }
+    .select option {
+      background: #151b23;
+      color: #e2e8f0;
+    }
+    .btn-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+    .planner-btn {
       flex: 1;
-      height: 100%;
-      position: relative;
+      min-width: 130px;
+      background: rgba(197, 160, 89, 0.08);
+      border: 1px solid rgba(197, 160, 89, 0.35);
+      color: #dfc38a;
+      border-radius: 4px;
+      padding: 9px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      text-align: left;
+    }
+    .planner-btn:hover, .planner-btn.active {
+      background: #c5a059;
+      color: #111827;
+    }
+    .primary {
+      width: 100%;
+      background: #c5a059;
+      color: #10141a;
+      border: 0;
+      border-radius: 4px;
+      padding: 11px 12px;
+      font-weight: 800;
+      cursor: pointer;
+      margin-top: 12px;
+    }
+    .secondary {
+      width: 100%;
+      background: transparent;
+      color: #a0aec0;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 4px;
+      padding: 9px 12px;
+      cursor: pointer;
+      margin-top: 8px;
     }
     #map {
       width: 100%;
       height: 100%;
-    }
-    .console-header {
-      padding: 20px;
-      border-bottom: 1px solid rgba(197, 160, 89, 0.2);
-      background: linear-gradient(135deg, rgba(197, 160, 89, 0.1), transparent);
-    }
-    .console-title {
-      font-family: var(--font-title, 'Trajan Pro', 'Georgia', serif);
-      font-size: 20px;
-      color: #dfc38a;
-      letter-spacing: 2px;
-      margin-bottom: 5px;
-      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
-    }
-    .console-subtitle {
-      font-size: 10px;
-      color: #a0aec0;
-      text-transform: uppercase;
-      letter-spacing: 1.5px;
-    }
-    .algo-select-box {
-      padding: 15px 20px;
-      border-bottom: 1px solid rgba(197, 160, 89, 0.1);
-    }
-    .algo-btn-grid {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 6px;
-      margin-top: 10px;
-    }
-    .algo-btn {
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid rgba(197, 160, 89, 0.2);
-      color: #a0aec0;
-      padding: 10px 12px;
-      font-size: 11px;
-      text-align: left;
-      cursor: pointer;
-      font-weight: bold;
-      transition: all 0.2s ease;
-      border-radius: 4px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .algo-btn:hover {
-      background: rgba(197, 160, 89, 0.08);
-      color: #fff;
-      border-color: #dfc38a;
-    }
-    .algo-btn.active {
-      background: #c5a059;
-      color: #000;
-      border-color: #dfc38a;
-    }
-    .algo-btn .badge {
-      font-size: 8px;
-      background: rgba(0,0,0,0.3);
-      color: #dfc38a;
-      padding: 2px 6px;
-      border-radius: 10px;
-      border: 1px solid rgba(197, 160, 89, 0.3);
-    }
-    .algo-btn.active .badge {
-      background: rgba(255,255,255,0.2);
-      color: #000;
-      border-color: #000;
-    }
-    .control-panel {
-      padding: 20px;
-      border-bottom: 1px solid rgba(197, 160, 89, 0.1);
-    }
-    .form-group {
-      margin-bottom: 12px;
-    }
-    .form-group label {
-      font-size: 11px;
-      color: #dfc38a;
-      display: block;
-      margin-bottom: 4px;
-    }
-    .dashboard-panel {
-      padding: 20px;
-      background: rgba(0, 0, 0, 0.2);
-      border-bottom: 1px solid rgba(197, 160, 89, 0.1);
+      background: #05070a;
     }
     .metric-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      margin-top: 8px;
+      gap: 8px;
     }
-    .metric-card {
-      background: rgba(255, 255, 255, 0.02);
-      border: 1px solid rgba(255, 255, 255, 0.05);
+    .metric {
+      border: 1px solid rgba(255, 255, 255, 0.08);
       border-radius: 4px;
-      padding: 8px;
-      text-align: center;
+      background: rgba(255, 255, 255, 0.03);
+      padding: 10px;
     }
-    .metric-card .value {
-      font-size: 18px;
-      font-weight: bold;
+    .metric .value {
       color: #dfc38a;
+      font-weight: 800;
+      font-size: 18px;
     }
-    .metric-card .label {
-      font-size: 8px;
-      color: #718096;
+    .metric .label {
+      color: #8a95a5;
       text-transform: uppercase;
-      margin-top: 2px;
+      font-size: 9px;
+      margin-top: 3px;
     }
-    .insights-panel {
-      padding: 20px;
-      background: rgba(197, 160, 89, 0.03);
+    .result-row {
+      border: 1px solid rgba(197, 160, 89, 0.18);
+      border-radius: 4px;
+      padding: 10px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      background: rgba(0, 0, 0, 0.18);
     }
-    .insights-card {
-      border: 1px solid rgba(197, 160, 89, 0.2);
-      border-radius: 6px;
-      padding: 12px;
+    .result-row:hover {
+      border-color: #dfc38a;
+    }
+    .result-title {
+      color: #dfc38a;
+      font-weight: 800;
+      font-size: 12px;
+      margin-bottom: 5px;
+    }
+    .result-meta {
+      color: #a0aec0;
       font-size: 11px;
       line-height: 1.5;
     }
-    .insights-title {
-      font-weight: bold;
-      color: #dfc38a;
-      margin-bottom: 6px;
-      text-transform: uppercase;
-      font-size: 10px;
-      letter-spacing: 0.5px;
+    .xai {
+      font-size: 12px;
+      line-height: 1.55;
+      color: #d7dee8;
     }
-    .xai-overlay {
-      position: absolute;
-      bottom: 20px;
-      left: 20px;
-      right: 20px;
-      background: rgba(13, 17, 23, 0.9);
-      border: 1px solid #c5a059;
-      border-radius: 6px;
-      padding: 12px 18px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.6);
-      z-index: 1000;
-      backdrop-filter: blur(5px);
-      transition: all 0.3s ease;
+    .xai p {
+      margin: 0 0 9px;
     }
-    .xai-title {
+    .warning {
+      color: #f87171;
       font-size: 11px;
-      color: #dfc38a;
-      font-weight: bold;
-      text-transform: uppercase;
-      margin-bottom: 4px;
-      letter-spacing: 1px;
+      line-height: 1.45;
+      margin-top: 8px;
     }
-    .xai-text {
-      font-size: 12.5px;
-      line-height: 1.4;
-      color: #e2e8f0;
-    }
-    .legend-overlay {
+    .legend {
       position: absolute;
-      top: 20px;
-      right: 20px;
-      background: rgba(22, 28, 36, 0.95);
-      border: 1px solid #c5a059;
-      padding: 12px;
-      border-radius: 6px;
-      z-index: 1000;
+      right: 374px;
+      top: 66px;
+      z-index: 500;
+      background: rgba(19, 25, 33, 0.92);
+      border: 1px solid rgba(197, 160, 89, 0.35);
+      border-radius: 4px;
+      padding: 9px 11px;
       font-size: 10px;
+      color: #cbd5e1;
     }
-    .legend-overlay {
-      background: rgba(22, 28, 36, 0.95);
-      border: 1px solid #c5a059;
-      padding: 12px;
-      border-radius: 6px;
-      z-index: 1000;
-      font-size: 10px;
-    }
-    .legend-item {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      margin-bottom: 4px;
-    }
-    .legend-color {
-      width: 12px;
-      height: 12px;
+    .swatch {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
       border-radius: 2px;
+      margin-right: 6px;
+      vertical-align: -1px;
+    }
+    @media (max-width: 1050px) {
+      .layout {
+        grid-template-columns: 360px 1fr;
+      }
+      .right-panel {
+        display: none;
+      }
+      .legend {
+        right: 12px;
+      }
     }
   </style>
 </head>
 <body>
-
-  <!-- Resource Header -->
-  <div class="resource-bar">
-    <div class="resource-group">
-      <div style="font-family:var(--font-title);font-size:14px;color:#dfc38a;letter-spacing:2px;cursor:pointer;" onclick="window.location.href='/select'">
-        ◀ SIGNAL CITY
-      </div>
-      <div style="color:#718096; font-size:11px;">Interactive DAA Urban Planning System v4.0</div>
-    </div>
-    <div class="resource-group">
-      <button class="civ-btn civ-btn-sm" onclick="window.location.href='/select'">Back to Hub</button>
-    </div>
+  <div class="topbar">
+    <div class="brand" onclick="window.location.href='/select'">SIGNAL CITY</div>
+    <div class="subtle">Applied DAA Urban Planning Console - Bengaluru</div>
+    <button class="civ-btn civ-btn-sm" onclick="window.location.href='/select'">Back to Hub</button>
   </div>
 
-  <div class="game-layout">
-    <!-- LEFT CONTROL SIDEBAR -->
-    <div class="sidebar">
-      <div class="console-header">
-        <div class="console-title">DAA APPLIED DECISION CONSOLE</div>
-        <div class="console-subtitle">High-Fidelity Traffic & Siting Optimizers</div>
-      </div>
-
-      <!-- 1. Algorithm Selection -->
-      <div class="algo-select-box">
-        <label style="font-size:11px;color:#dfc38a;font-weight:bold;text-transform:uppercase;">1. Choose DAA Algorithm</label>
-        <div class="algo-btn-grid">
-          <button class="algo-btn active" id="btn-algo-contraction" onclick="selectAlgo('contraction')">
-            <span>🚀 Contraction Hierarchies</span>
-            <span class="badge">Ultra-Fast Query</span>
-          </button>
-          <button class="algo-btn" id="btn-algo-flooding" onclick="selectAlgo('flooding')">
-            <span>🌧️ Dynamic Flooding A*</span>
-            <span class="badge">Adaptive routing</span>
-          </button>
-          <button class="algo-btn" id="btn-algo-facility" onclick="selectAlgo('facility')">
-            <span>🏥 k-Median Facility Siting</span>
-            <span class="badge">Resource Siting</span>
-          </button>
-          <button class="algo-btn" id="btn-algo-pagerank" onclick="selectAlgo('pagerank')">
-            <span>📈 Personalized PageRank</span>
-            <span class="badge">Hub analysis</span>
-          </button>
-          <button class="algo-btn" id="btn-algo-leiden" onclick="selectAlgo('leiden')">
-            <span>🌐 Leiden Community Zoning</span>
-            <span class="badge">City Clustering</span>
-          </button>
+  <div class="layout">
+    <aside class="panel">
+      <div class="section">
+        <div class="title">1. Select Experiment</div>
+        <div class="btn-row">
+          <button class="planner-btn active" id="mode-route" onclick="setMode('route')">Route Lab<br><span class="subtle">Dijkstra vs A* vs CH vs risk</span></button>
+          <button class="planner-btn" id="mode-civic" onclick="setMode('civic')">Civic Service Optimizer<br><span class="subtle">2024 RL facility planning</span></button>
+          <button class="planner-btn" id="mode-resilience" onclick="setMode('resilience')">Resilient K-Routes<br><span class="subtle">2023 dynamic KSP showcase</span></button>
+          <button class="planner-btn" id="mode-facility" onclick="setMode('facility')">Classic Facility Siting<br><span class="subtle">k-median response baseline</span></button>
+          <button class="planner-btn" id="mode-transit" onclick="setMode('transit')">Transit Equity<br><span class="subtle">PageRank and ward access</span></button>
         </div>
       </div>
 
-      <!-- 2. Controls / Landmark Snap Selection -->
-      <div class="control-panel">
-        <div class="section-title">🕹️ Parameters & Interactive Snapping</div>
-        
-        <!-- Standard Routing Fields -->
-        <div id="routing-inputs">
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
-            <div class="form-group">
-              <label>📍 Start Point</label>
-              <select class="civ-input" id="snap-start" onchange="snapLandmark('start', this.value)" style="font-size:11px;padding:5px;">
-                <option value="">Choose landmark...</option>
-                <option value="Majestic (Central Bus Station)">Majestic</option>
-                <option value="MG Road (Metro Station)">MG Road</option>
-                <option value="Koramangala (Startup Hub)">Koramangala</option>
-                <option value="HSR Layout (Residential Tech)">HSR Layout</option>
-                <option value="Indiranagar (Commercial Core)">Indiranagar</option>
-                <option value="Jayanagar (Residential Market)">Jayanagar</option>
-                <option value="Whitefield (IT Hub)">Whitefield</option>
-                <option value="Hebbal (Flyover Interchange)">Hebbal</option>
-                <option value="Yeshwanthpur (Transit Hub)">Yeshwanthpur</option>
-                <option value="Electronic City (IT Zone)">Electronic City</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>🏁 End Point</label>
-              <select class="civ-input" id="snap-end" onchange="snapLandmark('end', this.value)" style="font-size:11px;padding:5px;">
-                <option value="">Choose landmark...</option>
-                <option value="Majestic (Central Bus Station)">Majestic</option>
-                <option value="MG Road (Metro Station)">MG Road</option>
-                <option value="Koramangala (Startup Hub)">Koramangala</option>
-                <option value="HSR Layout (Residential Tech)">HSR Layout</option>
-                <option value="Indiranagar (Commercial Core)">Indiranagar</option>
-                <option value="Jayanagar (Residential Market)">Jayanagar</option>
-                <option value="Whitefield (IT Hub)">Whitefield</option>
-                <option value="Hebbal (Flyover Interchange)">Hebbal</option>
-                <option value="Yeshwanthpur (Transit Hub)">Yeshwanthpur</option>
-                <option value="Electronic City (IT Zone)">Electronic City</option>
-              </select>
-            </div>
+      <div class="section" id="route-controls">
+        <div class="title">2. Origin and Destination</div>
+        <div class="grid-2">
+          <div>
+            <div class="subtle">Start locality</div>
+            <select class="select" id="start-select" onchange="selectLandmark('start', this.value)"></select>
           </div>
-          <p style="font-size:9px;color:#718096;margin:0 0 10px 0;">*Tip: You can also click directly on any node on the map to set Start/End points.</p>
-        </div>
-
-        <!-- Flooding Inputs -->
-        <div id="flooding-inputs" style="display:none; border:1px dashed rgba(226, 75, 74, 0.4); padding:10px; border-radius:4px; margin-bottom:12px; background:rgba(226, 75, 74, 0.03);">
-          <label style="font-size:11px;color:#E24B4A;font-weight:bold;display:block;margin-bottom:4px;">🌧️ Flooding Setup</label>
-          <div style="font-size:9.5px;color:#a0aec0;line-height:1.3;margin-bottom:6px;">
-            Edges connected to flooded nodes will suffer a <strong>1000x cost penalty</strong>, forcing the dynamic route planner to bypass them. Click map nodes to toggle flood zones.
-          </div>
-          <button class="civ-btn civ-btn-sm" style="border-color:#E24B4A;color:#E24B4A;padding:2px 8px;" onclick="clearFloodedNodes()">Reset Flood Zones</button>
-        </div>
-
-        <!-- k-Median Inputs -->
-        <div id="facility-inputs" style="display:none; border:1px dashed rgba(197, 160, 89, 0.4); padding:10px; border-radius:4px; margin-bottom:12px;">
-          <div class="form-group">
-            <label>Number of Facilities to site (k)</label>
-            <input type="range" id="param-k" min="2" max="6" value="3" oninput="document.getElementById('lbl-k').textContent = this.value">
-            <span style="font-size:11px;color:#dfc38a;margin-left:5px;" id="lbl-k">3</span>
+          <div>
+            <div class="subtle">End locality</div>
+            <select class="select" id="end-select" onchange="selectLandmark('end', this.value)"></select>
           </div>
         </div>
-
-        <!-- PageRank Seed -->
-        <div id="pagerank-inputs" style="display:none;">
-          <div class="form-group">
-            <label>📍 Centrality Seed Landmark</label>
-            <select class="civ-input" id="pagerank-seed" onchange="snapLandmark('pagerank_seed', this.value)" style="font-size:11px;padding:5px;">
-              <option value="Majestic (Central Bus Station)">Majestic</option>
-              <option value="MG Road (Metro Station)">MG Road</option>
-              <option value="Koramangala (Startup Hub)">Koramangala</option>
-              <option value="HSR Layout (Residential Tech)">HSR Layout</option>
-              <option value="Indiranagar (Commercial Core)">Indiranagar</option>
-            </select>
-          </div>
+        <div style="margin-top:8px;">
+          <div class="subtle">Or type any known Bengaluru place</div>
+          <input class="input" id="start-name" placeholder="Example: HSR Layout">
+          <input class="input" id="end-name" placeholder="Example: MG Road" style="margin-top:6px;">
         </div>
-
-        <!-- Run Controls -->
-        <div style="display:flex; gap:10px; margin-top:15px;">
-          <button class="civ-btn py-2" style="flex:2;" onclick="startImpactWS()">🚀 Execute Algorithm</button>
-          <button class="civ-btn py-2" style="flex:1; border-color:#e24b4a; color:#e24b4a;" onclick="stopImpact()">Stop</button>
-        </div>
-        <div class="form-group" style="margin-top:10px;">
-          <label style="display:flex; justify-content:space-between;">
-            <span>Animation Speed</span>
-            <span id="lbl-speed">50ms</span>
-          </label>
-          <input type="range" id="anim-speed" min="10" max="300" value="50" oninput="document.getElementById('lbl-speed').textContent = this.value + 'ms'">
-        </div>
+        <div class="subtle" style="margin-top:8px;">Map clicks set Start, then End for route experiments. Civic experiments use BBMP/BMTC/civic datasets directly.</div>
       </div>
 
-      <!-- 3. Performance Complexity Dashboard -->
-      <div class="dashboard-panel">
-        <div class="section-title">📊 Complexity & DAA Performance</div>
-        <div class="metric-grid">
-          <div class="metric-card">
-            <div class="value" id="perf-ops">0</div>
-            <div class="label">Operations (Settlements)</div>
-          </div>
-          <div class="metric-card">
-            <div class="value" id="perf-complexity">O(V log V + E)</div>
-            <div class="label">Time Complexity Bound</div>
-          </div>
-          <div class="metric-card">
-            <div class="value" id="perf-speedup">--</div>
-            <div class="label">Optimized Speedup Ratio</div>
-          </div>
-          <div class="metric-card">
-            <div class="value" id="perf-efficiency">--</div>
-            <div class="label">Calculated Path Weight</div>
-          </div>
+      <div class="section" id="facility-controls" style="display:none;">
+        <div class="title">2. Facility Parameters</div>
+        <div class="grid-2">
+          <select class="select" id="facility-type">
+            <option value="hospital">Hospitals</option>
+            <option value="fire_station">Fire stations</option>
+            <option value="charging_station">EV charging</option>
+          </select>
+          <select class="select" id="facility-k">
+            <option value="1">k = 1</option>
+            <option value="2" selected>k = 2</option>
+            <option value="3">k = 3</option>
+            <option value="4">k = 4</option>
+            <option value="5">k = 5</option>
+          </select>
         </div>
+        <div class="subtle" style="margin-top:8px;">Objective: minimize population-weighted response time to nearest active facility node.</div>
       </div>
 
-      <!-- 4. Academic Insights Card (Teacher defense notes) -->
-      <div class="insights-panel">
-        <div class="insights-card">
-          <div class="insights-title">🏫 DAA Academic Defense Card</div>
-          <div id="insights-content">
-            <strong>Contraction Hierarchies (CH)</strong>:
-            <br>• <strong>Strategy</strong>: Preprocesses the graph by contracting nodes in order of importance and adding shortcuts to bypass them, reducing search nodes by 90%+.
-            <br>• <strong>Complexity</strong>: Query is $O(V_{CH} \log V_{CH} + E_{CH})$ where $V_{CH} \ll V$.
-            <br>• <strong>Real-world Case</strong>: Powering routing in maps engine API (e.g. Google Maps, Mapbox) to find paths across millions of roads in microseconds.
-          </div>
+      <div class="section" id="civic-controls" style="display:none;">
+        <div class="title">2. Civic Optimizer Parameters</div>
+        <div class="grid-2">
+          <select class="select" id="civic-type">
+            <option value="hospital">Clinics / hospitals</option>
+            <option value="fire_station">Fire response units</option>
+            <option value="charging_station">EV charging hubs</option>
+          </select>
+          <select class="select" id="civic-k">
+            <option value="2">2 new sites</option>
+            <option value="3">3 new sites</option>
+            <option value="4" selected>4 new sites</option>
+            <option value="5">5 new sites</option>
+          </select>
         </div>
+        <div class="subtle" style="margin-top:8px;">Uses BBMP ward demand + OSM road travel time + existing civic POIs. The algorithm improves a greedy baseline with knowledge-guided swaps inspired by 2024 urban facility-location RL.</div>
+        <button class="secondary" onclick="loadCivicDemo()">Load demo: 4 new clinics</button>
       </div>
-    </div>
 
-    <!-- RIGHT MAP CONTAINER -->
-    <div class="map-container">
+      <div class="section" id="resilience-controls" style="display:none;">
+        <div class="title">Research Showcase Settings</div>
+        <div class="grid-2">
+          <select class="select" id="resilience-k">
+            <option value="3">3 alternatives</option>
+            <option value="4" selected>4 alternatives</option>
+            <option value="5">5 alternatives</option>
+            <option value="6">6 alternatives</option>
+          </select>
+          <select class="select" id="resilience-scenario">
+            <option value="normal">Crash-risk only</option>
+          </select>
+        </div>
+        <div class="subtle" style="margin-top:8px;">Based on 2023 dynamic k-shortest-path research: produce a portfolio of robust alternatives, not one fragile route.</div>
+      </div>
+
+      <div class="section">
+        <div class="title">3. Execute</div>
+        <button class="primary" onclick="runExperiment()">Run Applied Analysis</button>
+        <button class="secondary" onclick="resetSelections()">Reset map selections</button>
+        <div id="status" class="subtle" style="margin-top:10px;">Loading Bengaluru road graph...</div>
+      </div>
+
+      <div class="section">
+        <div class="title">Data Provenance</div>
+        <div id="quality-box" class="subtle">Waiting for graph metadata.</div>
+      </div>
+    </aside>
+
+    <main style="position:relative;">
       <div id="map"></div>
-      
-      <!-- Legends -->
-      <div class="legend-overlay">
-        <div class="legend-item"><div class="legend-color" style="background:#1D9E75;"></div><span>Search Wavefront (Forward)</span></div>
-        <div class="legend-item"><div class="legend-color" style="background:#8B5CF6;"></div><span>Search Wavefront (Backward)</span></div>
-        <div class="legend-item"><div class="legend-color" style="background:#FFD700;"></div><span>Final Path / Shortcuts</span></div>
-        <div class="legend-item"><div class="legend-color" style="background:#E24B4A;"></div><span>Flooded Nodes (Bypassed)</span></div>
+      <div class="legend">
+        <div><span class="swatch" style="background:#1D9E75;"></span>Start</div>
+        <div><span class="swatch" style="background:#E24B4A;"></span>End / underserved ward</div>
+        <div><span class="swatch" style="background:#FFD166;"></span>Selected route</div>
+        <div><span class="swatch" style="background:#60A5FA;"></span>Alternative route</div>
       </div>
+    </main>
 
-      <!-- XAI overlay at bottom -->
-      <div class="xai-overlay">
-        <div class="xai-title">🤖 Explainable AI (XAI) Agent</div>
-        <div class="xai-text" id="xai-content">Select two landmarks or click the map, then choose a DAA algorithm to analyze central Bengaluru's road network.</div>
+    <aside class="panel right-panel">
+      <div class="section">
+        <div class="title">Metrics</div>
+        <div class="metric-grid">
+          <div class="metric"><div class="value" id="m-distance">--</div><div class="label">Distance</div></div>
+          <div class="metric"><div class="value" id="m-time">--</div><div class="label">Travel time</div></div>
+          <div class="metric"><div class="value" id="m-ops">--</div><div class="label">Operations</div></div>
+          <div class="metric"><div class="value" id="m-risk">--</div><div class="label">Crash risk</div></div>
+        </div>
       </div>
-    </div>
+      <div class="section">
+        <div class="title">Algorithm Results</div>
+        <div id="results"></div>
+      </div>
+      <div class="section">
+        <div class="title">Explainable AI</div>
+        <div id="xai" class="xai"><p>Select an experiment. Civic Service Optimizer is the strongest viva feature: it solves a real BBMP-style facility placement problem instead of another shortest path.</p></div>
+      </div>
+    </aside>
   </div>
 
   <script>
-    // Snapping landmarks coordinates mapping
     const LANDMARKS = {
-      "Majestic (Central Bus Station)": [12.9767, 77.5713],
-      "MG Road (Metro Station)": [12.9756, 77.6068],
-      "Koramangala (Startup Hub)": [12.9352, 77.6245],
-      "HSR Layout (Residential Tech)": [12.9116, 77.6474],
-      "Indiranagar (Commercial Core)": [12.9784, 77.6408],
-      "Jayanagar (Residential Market)": [12.9250, 77.5938],
-      "Whitefield (IT Hub)": [12.9698, 77.7500],
-      "Hebbal (Flyover Interchange)": [13.0358, 77.5970],
-      "Yeshwanthpur (Transit Hub)": [13.0250, 77.5340],
-      "Electronic City (IT Zone)": [12.8452, 77.6602]
+      "Majestic": [12.9767, 77.5713],
+      "MG Road": [12.9756, 77.6068],
+      "Indiranagar": [12.9784, 77.6408],
+      "Koramangala": [12.9352, 77.6245],
+      "HSR Layout": [12.9116, 77.6474],
+      "Jayanagar": [12.9250, 77.5938],
+      "Banashankari": [12.9255, 77.5468],
+      "Marathahalli": [12.9569, 77.7011],
+      "Whitefield": [12.9698, 77.7500],
+      "Hebbal": [13.0358, 77.5970],
+      "Yeshwanthpur": [13.0250, 77.5340],
+      "Electronic City": [12.8452, 77.6602]
     };
 
-    const ACAD_INSIGHTS = {
-      "contraction": `<strong>Contraction Hierarchies (CH)</strong>:
-        <br>• <strong>Strategy</strong>: Node contraction. It sorts nodes by importance and removes them one by one. If a node contraction breaks the shortest path between its neighbors, a "shortcut edge" is added.
-        <br>• <strong>Complexity</strong>: Query: $O(V_{CH} \\log V_{CH} + E_{CH})$ where $V_{CH}$ is the search space of bidirectional Dijkstra on the contracted graph.
-        <br>• <strong>Real-world Case</strong>: Enables instant path calculation on servers running Google Maps/Uber where standard Dijkstra is too slow.`,
-      
-      "flooding": `<strong>Dynamic Flooding A* / Dijkstra</strong>:
-        <br>• <strong>Strategy</strong>: Adaptive Cost Function Mutation. Modifies edge costs dynamically. Multiplies weights by 1000x for any edges adjacent to flooded nodes, forcing A* to route around them.
-        <br>• <strong>Complexity</strong>: $O((V+E) \\log V)$.
-        <br>• <strong>Real-world Case</strong>: Emergency response vehicles routing around flooded roads during heavy monsoons or blockages.`,
-      
-      "facility": `<strong>k-Median Facility Siting</strong>:
-        <br>• <strong>Strategy</strong>: NP-Hard facility location heuristic (solved here via Grey Wolf Optimization swarm metaheuristic). Finds $k$ points to minimize the sum of distances to all other nodes.
-        <br>• <strong>Complexity</strong>: $O(I \\cdot P \\cdot k \\cdot V)$ where $I$ is iterations, $P$ is swarm size.
-        <br>• <strong>Real-world Case</strong>: Optimal placement of ambulance dispatch stations or hospital centers to minimize average response times.`,
-
-      "pagerank": `<strong>Personalized PageRank Centrality</strong>:
-        <br>• <strong>Strategy</strong>: Random walk stationary distribution with a personalized teleportation vector. Biases search restarts back to the selected seed node instead of uniform distribution.
-        <br>• <strong>Complexity</strong>: $O(I \\cdot (V + E))$.
-        <br>• <strong>Real-world Case</strong>: Ranking nearby intersections by accessibility or traffic congestion relative to a specific landmark hub.`,
-
-      "leiden": `<strong>Leiden Community Detection (2019)</strong>:
-        <br>• <strong>Strategy</strong>: Hierarchical modularity optimization. Resolves Louvain (2008) anomalies by guaranteeing connected communities. Grouping nodes with high internal link density.
-        <br>• <strong>Complexity</strong>: $O(V \\log V)$.
-        <br>• <strong>Real-world Case</strong>: Urban district zoning, neighborhood boundary setting, and identifying traffic boundary bottlenecks.`
-    };
-
-    // State Variables
-    let selectedAlgo = 'contraction';
+    const ROUTE_COLORS = ["#FFD166", "#60A5FA", "#A78BFA", "#34D399", "#FB7185"];
+    let mode = "route";
+    let map, graphLayer, routeLayer, markerLayer;
     let graphData = null;
-    let selectedNodes = [null, null]; // [start, end]
+    let nodeMap = {};
+    let selected = { start: null, end: null };
     let floodedNodes = new Set();
-    let pagerankSeedNode = null;
-    let ws = null;
-    let map = null;
-    let graphLayer = null;
-    let markersLayer = null;
-    let pathLayer = null;
     let startMarker = null;
     let endMarker = null;
-    let seedMarker = null;
-    let nodeMap = {};
 
-    // Initialize Map and Load Bengaluru real cached graph
-    function initConsole() {
-      map = L.map('map').setView([12.9716, 77.5946], 13);
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; OpenStreetMap &copy; CartoDB'
-      }).addTo(map);
-
-      graphLayer = L.layerGroup().addTo(map);
-      markersLayer = L.layerGroup().addTo(map);
-      pathLayer = L.layerGroup().addTo(map);
-
-      loadBengaluruGraph();
+    function setStatus(text) {
+      document.getElementById("status").textContent = text;
     }
 
-    async function loadBengaluruGraph() {
-      try {
-        document.getElementById('xai-content').textContent = 'Loading Central Bengaluru Street Network Graph...';
-        const res = await fetch('/api/load-city', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({ city: 'bengaluru', apply_weather: false, include_pois: true })
-        });
-        const payload = await res.json();
-        graphData = payload.graph;
-        
-        nodeMap = {};
-        graphData.nodes.forEach(n => {
-          nodeMap[n.id] = n;
-        });
-
-        drawStreetNetwork();
-        document.getElementById('xai-content').textContent = 'Central Bengaluru graph loaded successfully. Snap points or click the map to select Start/End nodes!';
-      } catch (e) {
-        document.getElementById('xai-content').textContent = 'Failed to load Bengaluru street network. Ensure server is running.';
-      }
+    function setMode(nextMode) {
+      mode = nextMode;
+      document.querySelectorAll(".planner-btn").forEach(btn => btn.classList.remove("active"));
+      document.getElementById(`mode-${nextMode}`).classList.add("active");
+      document.getElementById("route-controls").style.display = (nextMode === "facility" || nextMode === "transit" || nextMode === "civic") ? "none" : "block";
+      document.getElementById("facility-controls").style.display = nextMode === "facility" ? "block" : "none";
+      document.getElementById("civic-controls").style.display = nextMode === "civic" ? "block" : "none";
+      document.getElementById("resilience-controls").style.display = nextMode === "resilience" ? "block" : "none";
+      setStatus(nextMode === "resilience" ? "Select start/end for resilient route portfolio." : "Ready.");
     }
 
-    function drawStreetNetwork() {
-      graphLayer.clearLayers();
-      
-      // Draw edges
-      graphData.edges.forEach(e => {
-        const u = nodeMap[e.u];
-        const v = nodeMap[e.v];
-        if (u && v) {
-          const line = L.polyline([[u.lat, u.lon], [v.lat, v.lon]], {
-            color: 'rgba(255,255,255,0.06)',
-            weight: 1.5,
-            className: `edge-${e.u}-${e.v}`
-          });
-          graphLayer.addLayer(line);
+    function fillLandmarks() {
+      const start = document.getElementById("start-select");
+      const end = document.getElementById("end-select");
+      const options = `<option value="">Choose...</option>` + Object.keys(LANDMARKS).map(name => `<option value="${name}">${name}</option>`).join("");
+      start.innerHTML = options;
+      end.innerHTML = options;
+    }
+
+    function nearestNode(lat, lon) {
+      let best = null;
+      let bestDist = Infinity;
+      for (const node of graphData.nodes || []) {
+        const d = Math.pow(node.lat - lat, 2) + Math.pow(node.lon - lon, 2);
+        if (d < bestDist) {
+          bestDist = d;
+          best = node.id;
         }
-      });
-
-      // Draw nodes
-      graphData.nodes.forEach(n => {
-        const circle = L.circleMarker([n.lat, n.lon], {
-          radius: 3,
-          fillColor: '#5A6474',
-          color: 'transparent',
-          fillOpacity: 0.6
-        });
-        circle.nodeId = n.id;
-        circle.on('click', () => handleMapNodeClick(n.id));
-        graphLayer.addLayer(circle);
-      });
+      }
+      return best;
     }
 
-    // Snapping logic
-    function findNearestNode(lat, lon) {
-      if (!graphData) return null;
-      let minDist = Infinity;
-      let nearestId = null;
-      graphData.nodes.forEach(n => {
-        const d = Math.pow(n.lat - lat, 2) + Math.pow(n.lon - lon, 2);
-        if (d < minDist) {
-          minDist = d;
-          nearestId = n.id;
-        }
-      });
-      return nearestId;
+    function selectLandmark(kind, name) {
+      if (!name || !LANDMARKS[name] || !graphData) return;
+      const [lat, lon] = LANDMARKS[name];
+      setEndpoint(kind, nearestNode(lat, lon), name);
+      document.getElementById(kind === "start" ? "start-name" : "end-name").value = name;
     }
 
-    function snapLandmark(type, landmarkName) {
-      if (!landmarkName || !LANDMARKS[landmarkName]) return;
-      const coords = LANDMARKS[landmarkName];
-      const nid = findNearestNode(coords[0], coords[1]);
-      if (nid) {
-        setNodeSelection(type, nid);
-      }
-    }
-
-    function handleMapNodeClick(nid) {
-      if (selectedAlgo === 'flooding') {
-        // Toggle flooded nodes
-        if (floodedNodes.has(nid)) {
-          floodedNodes.delete(nid);
-          setNodeColor(nid, '#5A6474', 3);
-        } else {
-          floodedNodes.add(nid);
-          setNodeColor(nid, '#E24B4A', 7); // red for flood
-        }
-        return;
-      }
-      
-      if (selectedAlgo === 'pagerank') {
-        setNodeSelection('pagerank_seed', nid);
-        return;
-      }
-
-      // Standard routing selection
-      if (!selectedNodes[0]) {
-        setNodeSelection('start', nid);
-      } else if (!selectedNodes[1]) {
-        setNodeSelection('end', nid);
+    function setEndpoint(kind, nodeId, label) {
+      const node = nodeMap[nodeId];
+      if (!node) return;
+      selected[kind] = nodeId;
+      const marker = L.circleMarker([node.lat, node.lon], {
+        radius: 8,
+        fillColor: kind === "start" ? "#1D9E75" : "#E24B4A",
+        color: "#fff",
+        weight: 2,
+        fillOpacity: 1,
+      }).bindPopup(`${kind === "start" ? "Start" : "End"}: ${label || nodeId}`);
+      if (kind === "start") {
+        if (startMarker) markerLayer.removeLayer(startMarker);
+        startMarker = marker.addTo(markerLayer);
       } else {
-        // Clear and select start again
-        setNodeSelection('start', nid);
-        setNodeSelection('end', null);
+        if (endMarker) markerLayer.removeLayer(endMarker);
+        endMarker = marker.addTo(markerLayer);
+      }
+      setStatus(`Start: ${selected.start || "--"} | End: ${selected.end || "--"}`);
+    }
+
+    function onNodeClick(nodeId) {
+      if (false && (mode === "flood" || mode === "resilience") && selected.start && selected.end) {
+        if (nodeId === selected.start || nodeId === selected.end) return;
+        if (floodedNodes.has(nodeId)) {
+          floodedNodes.delete(nodeId);
+          colorNode(nodeId, "#5A6474", 3);
+        } else {
+          floodedNodes.add(nodeId);
+          colorNode(nodeId, "#E24B4A", 7);
+        }
+        setStatus(`${floodedNodes.size} flooded nodes selected.`);
+        return;
+      }
+      if (!selected.start) {
+        setEndpoint("start", nodeId, "map click");
+      } else if (!selected.end) {
+        setEndpoint("end", nodeId, "map click");
+      } else {
+        resetSelections();
+        setEndpoint("start", nodeId, "map click");
       }
     }
 
-    function setNodeSelection(type, nid) {
-      const node = nodeMap[nid];
-      
-      if (type === 'start') {
-        selectedNodes[0] = nid;
-        if (startMarker) map.removeLayer(startMarker);
-        if (nid) {
-          startMarker = L.circleMarker([node.lat, node.lon], {
-            radius: 8,
-            fillColor: '#1D9E75',
-            color: '#fff',
-            weight: 2,
-            fillOpacity: 1
-          }).bindPopup(`<strong>Start snapped</strong>: Node ${nid}`).addTo(map);
-          document.getElementById('snap-start').value = getLandmarkKeyForNode(nid) || "";
-        }
-      } else if (type === 'end') {
-        selectedNodes[1] = nid;
-        if (endMarker) map.removeLayer(endMarker);
-        if (nid) {
-          endMarker = L.circleMarker([node.lat, node.lon], {
-            radius: 8,
-            fillColor: '#8B5CF6',
-            color: '#fff',
-            weight: 2,
-            fillOpacity: 1
-          }).bindPopup(`<strong>End snapped</strong>: Node ${nid}`).addTo(map);
-          document.getElementById('snap-end').value = getLandmarkKeyForNode(nid) || "";
-        }
-      } else if (type === 'pagerank_seed') {
-        pagerankSeedNode = nid;
-        if (seedMarker) map.removeLayer(seedMarker);
-        if (nid) {
-          seedMarker = L.circleMarker([node.lat, node.lon], {
-            radius: 8,
-            fillColor: '#FFD700',
-            color: '#fff',
-            weight: 2,
-            fillOpacity: 1
-          }).bindPopup(`<strong>Personalized PageRank Seed</strong>: Node ${nid}`).addTo(map);
-          document.getElementById('pagerank-seed').value = getLandmarkKeyForNode(nid) || "";
-        }
-      }
-    }
+    function drawGraph() {
+      graphLayer.clearLayers();
+      nodeMap = {};
+      for (const node of graphData.nodes || []) nodeMap[node.id] = node;
 
-    function getLandmarkKeyForNode(nid) {
-      const node = nodeMap[nid];
-      if (!node) return null;
-      for (const [k, coords] of Object.entries(LANDMARKS)) {
-        if (Math.abs(coords[0] - node.lat) < 0.005 && Math.abs(coords[1] - node.lon) < 0.005) {
-          return k;
-        }
-      }
-      return null;
-    }
-
-    function clearFloodedNodes() {
-      floodedNodes.forEach(nid => {
-        setNodeColor(nid, '#5A6474', 3);
-      });
-      floodedNodes.clear();
-    }
-
-    // Switch Algorithms
-    function selectAlgo(algo) {
-      selectedAlgo = algo;
-      document.querySelectorAll('.algo-btn').forEach(btn => btn.classList.remove('active'));
-      
-      let btnId = 'btn-algo-contraction';
-      if (algo === 'flooding') btnId = 'btn-algo-flooding';
-      if (algo === 'facility') btnId = 'btn-algo-facility';
-      if (algo === 'pagerank') btnId = 'btn-algo-pagerank';
-      if (algo === 'leiden') btnId = 'btn-algo-leiden';
-      
-      document.getElementById(btnId).classList.add('active');
-
-      // Toggle display of control inputs
-      document.getElementById('routing-inputs').style.display = (algo === 'contraction' || algo === 'flooding') ? 'block' : 'none';
-      document.getElementById('flooding-inputs').style.display = (algo === 'flooding') ? 'block' : 'none';
-      document.getElementById('facility-inputs').style.display = (algo === 'facility') ? 'block' : 'none';
-      document.getElementById('pagerank-inputs').style.display = (algo === 'pagerank') ? 'block' : 'none';
-
-      // Update academic insights card
-      document.getElementById('insights-content').innerHTML = ACAD_INSIGHTS[algo];
-      
-      // Reset color adjustments
-      resetMapStyles();
-    }
-
-    function resetMapStyles() {
-      pathLayer.clearLayers();
-      drawStreetNetwork();
-      if (floodedNodes.size > 0 && selectedAlgo === 'flooding') {
-        floodedNodes.forEach(nid => {
-          setNodeColor(nid, '#E24B4A', 7);
+      for (const edge of graphData.edges || []) {
+        const u = nodeMap[edge.u];
+        const v = nodeMap[edge.v];
+        if (!u || !v) continue;
+        const line = L.polyline([[u.lat, u.lon], [v.lat, v.lon]], {
+          color: edge.virtual_connector ? "rgba(248,113,113,0.28)" : "rgba(255,255,255,0.08)",
+          weight: edge.virtual_connector ? 2.3 : 1.2,
+          opacity: 0.8,
         });
+        line.edgeU = edge.u;
+        line.edgeV = edge.v;
+        graphLayer.addLayer(line);
+      }
+
+      for (const node of graphData.nodes || []) {
+        const circle = L.circleMarker([node.lat, node.lon], {
+          radius: node.hotspot ? 4.5 : 2.5,
+          fillColor: node.hotspot ? "#dfc38a" : "#5A6474",
+          color: "transparent",
+          fillOpacity: 0.75,
+        });
+        circle.nodeId = node.id;
+        circle.on("click", () => onNodeClick(node.id));
+        graphLayer.addLayer(circle);
       }
     }
 
-    // WebSockets execution and step animation
-    function startImpactWS() {
-      if (ws) {
-        ws.close();
-      }
-
-      resetMapStyles();
-
-      const speedVal = parseInt(document.getElementById('anim-speed').value);
-      const params = {
-        speed_ms: speedVal,
-        flooded_nodes: Array.from(floodedNodes)
-      };
-
-      let algoName = 'contraction';
-      if (selectedAlgo === 'contraction') {
-        algoName = 'contraction_hierarchies';
-        if (!selectedNodes[0] || !selectedNodes[1]) {
-          alert('Please select both Start and End points.');
-          return;
-        }
-        params.start_node = selectedNodes[0];
-        params.end_node = selectedNodes[1];
-        params.source_node = selectedNodes[0];
-        params.sink_node = selectedNodes[1];
-      } else if (selectedAlgo === 'flooding') {
-        algoName = 'flooding_astar';
-        if (!selectedNodes[0] || !selectedNodes[1]) {
-          alert('Please select both Start and End points.');
-          return;
-        }
-        params.start_node = selectedNodes[0];
-        params.end_node = selectedNodes[1];
-      } else if (selectedAlgo === 'facility') {
-        algoName = 'k_median';
-        params.k = parseInt(document.getElementById('param-k').value);
-      } else if (selectedAlgo === 'pagerank') {
-        algoName = 'pagerank';
-        if (!pagerankSeedNode) {
-          alert('Please select a seed landmark for PageRank.');
-          return;
-        }
-        params.personalization = {};
-        params.personalization[pagerankSeedNode] = 1.0;
-        params.damping = 0.85;
-      } else if (selectedAlgo === 'leiden') {
-        algoName = 'leiden';
-        params.resolution = 1.2;
-      }
-
-      document.getElementById('xai-content').textContent = `Initializing WebSocket stream for ${algoName}...`;
-      
-      const wsUrl = `ws://${window.location.host}/ws/algorithm`;
-      ws = new WebSocket(wsUrl);
-
-      ws.onopen = () => {
-        ws.send(JSON.stringify({
-          action: 'run',
-          algorithm: algoName,
-          city_id: 'bengaluru',
-          user_id: 'guest',
-          params: params
-        }));
-      };
-
-      let stepCounter = 0;
-
-      ws.onmessage = (event) => {
-        const msg = JSON.parse(event.data);
-        if (msg.type === 'step') {
-          stepCounter++;
-          document.getElementById('perf-ops').textContent = stepCounter;
-          
-          const delta = msg.delta;
-          if (delta.xai_text) {
-            document.getElementById('xai-content').textContent = delta.xai_text;
-          }
-
-          // Handle step delta animation
-          if (delta.kind === 'node_visited') {
-            setNodeColor(delta.node, '#1D9E75', 5.5);
-          } else if (delta.kind === 'node_frontier') {
-            setNodeColor(delta.node, '#378ADD', 4.5);
-          } else if (delta.kind === 'edge_added' || delta.kind === 'edge_relaxed') {
-            setEdgeColor(delta.from_node, delta.to_node, '#FFD700', 3);
-          } else if (delta.kind === 'node_contracted') {
-            setNodeColor(delta.node, '#8B5CF6', 5);
-          } else if (delta.kind === 'community_refined') {
-            const colors = ['#E24B4A', '#3182CE', '#38A169', '#D69E2E', '#805AD5', '#319795', '#ED64A6'];
-            const color = colors[delta.community_id % colors.length];
-            delta.nodes.forEach(nid => {
-              setNodeColor(nid, color, 4);
-            });
-          }
-          
-          if (msg.stats) {
-            document.getElementById('perf-complexity').textContent = msg.stats.theoretical_complexity || '--';
-          }
-
-        } else if (msg.type === 'complete') {
-          const summary = msg.summary;
-          document.getElementById('xai-content').innerHTML = `<strong>Execution Complete!</strong> ${summary.xai_text || ''}`;
-          
-          // Draw final paths or facilities
-          if (summary.path) {
-            drawPath(summary.path, '#FFD700');
-            document.getElementById('perf-efficiency').textContent = `${summary.distance || summary.dist || '--'} meters`;
-          }
-          
-          if (summary.facility_nodes) {
-            summary.facility_nodes.forEach(nid => {
-              setNodeColor(nid, '#FFD700', 10);
-              const node = nodeMap[nid];
-              if (node) {
-                L.circleMarker([node.lat, node.lon], {
-                  radius: 12,
-                  fillColor: '#FFD700',
-                  color: '#fff',
-                  weight: 2,
-                  fillOpacity: 0.9
-                }).bindPopup(`<strong>k-Median Center Sited</strong>: Node ${nid}`).addTo(pathLayer);
-              }
-            });
-          }
-
-          if (summary.top_nodes) {
-            summary.top_nodes.forEach((item, idx) => {
-              const nid = item[0] || item;
-              const val = item[1] || 0.05;
-              const node = nodeMap[nid];
-              if (node) {
-                setNodeColor(nid, '#3182CE', 5 + (val * 100));
-              }
-            });
-          }
-
-          const V = graphData.node_count;
-          const speedup = (V / Math.max(1, stepCounter)).toFixed(1);
-          document.getElementById('perf-speedup').textContent = `${speedup}x speedup`;
-
-        } else if (msg.type === 'error') {
-          document.getElementById('xai-content').textContent = `Error: ${msg.message}`;
-        }
-      };
-
-      ws.onerror = (e) => {
-        document.getElementById('xai-content').textContent = 'WebSocket connection error.';
-      };
-    }
-
-    function stopImpact() {
-      if (ws) {
-        ws.close();
-        ws = null;
-      }
-      document.getElementById('xai-content').textContent = 'Algorithm execution stopped.';
-    }
-
-    // Helper functions for map rendering updates
-    function setNodeColor(nodeId, fillColor, radius) {
-      graphLayer.eachLayer(l => {
-        if (l.nodeId === nodeId) {
-          l.setStyle({ fillColor, color: 'transparent', fillOpacity: 1, radius });
+    function colorNode(nodeId, color, radius) {
+      graphLayer.eachLayer(layer => {
+        if (layer.nodeId === nodeId) {
+          layer.setStyle({ fillColor: color, fillOpacity: 1, radius });
         }
       });
     }
 
-    function setEdgeColor(u, v, color, weight) {
-      graphLayer.eachLayer(l => {
-        if ((l.edgeU === u && l.edgeV === v) || (l.edgeU === v && l.edgeV === u)) {
-          l.setStyle({ color, weight, opacity: 0.9 });
-        }
-      });
-    }
-
-    function drawPath(path, color) {
+    function drawPath(path, color, weight = 5) {
       for (let i = 0; i < path.length - 1; i++) {
         const u = nodeMap[path[i]];
-        const v = nodeMap[path[i+1]];
-        if (u && v) {
-          const line = L.polyline([[u.lat, u.lon], [v.lat, v.lon]], {
-            color: color,
-            weight: 5.5,
-            opacity: 0.95
-          });
-          pathLayer.addLayer(line);
-        }
+        const v = nodeMap[path[i + 1]];
+        if (!u || !v) continue;
+        L.polyline([[u.lat, u.lon], [v.lat, v.lon]], { color, weight, opacity: 0.95 }).addTo(routeLayer);
       }
     }
 
-    // Window load init
-    window.onload = initConsole;
+    function updateMetrics(result) {
+      const metrics = result.metrics || result;
+      document.getElementById("m-distance").textContent = metrics.length_m ? `${(metrics.length_m / 1000).toFixed(2)} km` : "--";
+      document.getElementById("m-time").textContent = metrics.travel_minutes ? `${metrics.travel_minutes.toFixed(1)} min` : "--";
+      document.getElementById("m-ops").textContent = result.settled_nodes || result.ops || "--";
+      document.getElementById("m-risk").textContent = metrics.avg_crash_risk !== undefined ? metrics.avg_crash_risk : "--";
+    }
+
+    function renderRouteResults(results) {
+      const box = document.getElementById("results");
+      box.innerHTML = results.map((row, idx) => `
+        <div class="result-row" onclick="focusRoute(${idx})">
+          <div class="result-title">${row.name}</div>
+          <div class="result-meta">${row.length_km} km | ${row.travel_minutes} min | ${row.settled_nodes} settled nodes | ${row.runtime_ms} ms</div>
+        </div>
+      `).join("");
+      window.latestRoutes = results;
+    }
+
+    function focusRoute(idx) {
+      const row = (window.latestRoutes || [])[idx];
+      if (!row) return;
+      routeLayer.clearLayers();
+      drawPath(row.path, ROUTE_COLORS[idx % ROUTE_COLORS.length], 6);
+      updateMetrics({
+        metrics: {
+          length_m: row.length_km * 1000,
+          travel_minutes: row.travel_minutes,
+          avg_crash_risk: row.avg_crash_risk,
+        },
+        settled_nodes: row.settled_nodes,
+      });
+      document.getElementById("xai").innerHTML = `<p>${row.xai_text}</p>`;
+    }
+
+    function routePayload(extra = {}) {
+      const sourceName = document.getElementById("start-name").value.trim();
+      const destName = document.getElementById("end-name").value.trim();
+      return {
+        city_id: "bengaluru",
+        source_name: sourceName || null,
+        dest_name: destName || null,
+        start_node: sourceName ? null : selected.start,
+        end_node: destName ? null : selected.end,
+        flooded_nodes: Array.from(floodedNodes),
+        ...extra,
+      };
+    }
+
+    function requireRouteInputs() {
+      const sourceName = document.getElementById("start-name").value.trim();
+      const destName = document.getElementById("end-name").value.trim();
+      if ((sourceName && destName) || (selected.start && selected.end)) return true;
+      setStatus("Select both a start and end point first.");
+      document.getElementById("xai").innerHTML = `<p>Route experiments require exactly two selected city points. Use dropdowns, text boxes, or two map clicks.</p>`;
+      return false;
+    }
+
+    async function runRouteLab() {
+      if (!requireRouteInputs()) return;
+      setStatus("Comparing route algorithms...");
+      routeLayer.clearLayers();
+      const res = await fetch("/api/impact/route-lab", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(routePayload({ algorithms: ["dijkstra", "astar", "risk_aware", "contraction"] })),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Route lab failed");
+      renderRouteResults(data.results);
+      data.results.forEach((row, idx) => drawPath(row.path, ROUTE_COLORS[idx], idx === 0 ? 6 : 3));
+      focusRoute(0);
+      setStatus(`Route Lab complete. Run ID ${data.run_id}`);
+    }
+
+    async function runFlood() {
+      if (!requireRouteInputs()) return;
+      setStatus("Running flood-aware reroute...");
+      routeLayer.clearLayers();
+      const res = await fetch("/api/impact/flood-reroute", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(routePayload()),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Flood reroute failed");
+      drawPath(data.baseline.path, "#60A5FA", 4);
+      drawPath(data.rerouted.path, "#FFD166", 6);
+      updateMetrics(data.rerouted);
+      document.getElementById("results").innerHTML = `
+        <div class="result-row"><div class="result-title">Baseline shortest path</div><div class="result-meta">${(data.baseline.metrics.length_m / 1000).toFixed(2)} km | ${data.baseline.metrics.travel_minutes} min</div></div>
+        <div class="result-row"><div class="result-title">Flood-aware reroute</div><div class="result-meta">${(data.rerouted.metrics.length_m / 1000).toFixed(2)} km | ${data.rerouted.metrics.travel_minutes} min | extra ${data.extra_distance_m} m</div></div>
+      `;
+      document.getElementById("xai").innerHTML = `<p>${data.rerouted.xai_text}</p><p>Flood penalty caused ${data.extra_distance_m} m and ${data.extra_minutes} min change versus baseline.</p>`;
+      setStatus(`Flood reroute complete. Run ID ${data.run_id}`);
+    }
+
+    async function runResilience() {
+      if (!requireRouteInputs()) return;
+      setStatus("Running 2023 dynamic K-route resilience planner...");
+      routeLayer.clearLayers();
+      const scenario = document.getElementById("resilience-scenario").value;
+      const payload = routePayload({
+        k: parseInt(document.getElementById("resilience-k").value, 10),
+        flooded_nodes: scenario === "flood" ? Array.from(floodedNodes) : [],
+      });
+      const res = await fetch("/api/impact/resilience-ksp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Resilience planner failed");
+      const routes = data.routes || [];
+      routes.forEach((row, idx) => drawPath(row.path, ROUTE_COLORS[idx % ROUTE_COLORS.length], idx === 0 ? 6 : 3.5));
+      document.getElementById("results").innerHTML = routes.map((row, idx) => `
+        <div class="result-row" onclick="focusResilientRoute(${idx})">
+          <div class="result-title">#${row.rank} resilient route - score ${row.resilience_score}/100</div>
+          <div class="result-meta">${row.length_km} km | ${row.travel_minutes} min | risk ${row.avg_crash_risk} | overlap ${Math.round(row.overlap_with_best * 100)}%</div>
+        </div>
+      `).join("");
+      window.latestResilientRoutes = routes;
+      window.latestResilienceXai = data.xai_steps || [data.xai_text];
+      if (routes[0]) focusResilientRoute(0);
+      document.getElementById("xai").innerHTML = `
+        ${(data.xai_steps || [data.xai_text]).map(step => `<p>${step}</p>`).join("")}
+        <p><strong>Research basis:</strong> ${data.research_basis.paper} (${data.research_basis.year}). This app implements a local teaching adaptation for Bengaluru road data.</p>
+      `;
+      setStatus(`Resilient K-route analysis complete. Run ID ${data.run_id}`);
+    }
+
+    function focusResilientRoute(idx) {
+      const row = (window.latestResilientRoutes || [])[idx];
+      if (!row) return;
+      routeLayer.clearLayers();
+      drawPath(row.path, ROUTE_COLORS[idx % ROUTE_COLORS.length], 6);
+      updateMetrics({
+        metrics: {
+          length_m: row.length_km * 1000,
+          travel_minutes: row.travel_minutes,
+          avg_crash_risk: row.avg_crash_risk,
+        },
+        settled_nodes: `${row.resilience_score}/100`,
+      });
+      document.getElementById("xai").innerHTML = `
+        ${(window.latestResilienceXai || []).map(step => `<p>${step}</p>`).join("")}
+        <p>Selected route #${row.rank}: overlap with shortest-route edge set is ${Math.round(row.overlap_with_best * 100)}%, so it remains useful as a backup when a corridor is disrupted.</p>
+      `;
+    }
+
+    async function runFacility() {
+      setStatus("Optimizing facility siting...");
+      routeLayer.clearLayers();
+      const res = await fetch("/api/impact/facility-siting", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          city_id: "bengaluru",
+          facility_type: document.getElementById("facility-type").value,
+          k: parseInt(document.getElementById("facility-k").value, 10),
+          max_response_minutes: 8,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Facility siting failed");
+      for (const rec of data.recommendations || []) {
+        L.circleMarker([rec.lat, rec.lon], {
+          radius: 11,
+          fillColor: "#FFD166",
+          color: "#fff",
+          weight: 2,
+          fillOpacity: 0.95,
+        }).bindPopup(`Recommended ${data.facility_type}: ${rec.name}`).addTo(routeLayer);
+      }
+      document.getElementById("m-distance").textContent = `${data.improvement_pct}%`;
+      document.getElementById("m-time").textContent = `${data.after.avg_min} min`;
+      document.getElementById("m-ops").textContent = data.recommendations.length;
+      document.getElementById("m-risk").textContent = data.after.uncovered_nodes;
+      document.getElementById("results").innerHTML = `
+        <div class="result-row"><div class="result-title">Before</div><div class="result-meta">Avg ${data.before.avg_min} min | worst ${data.before.worst_case_min} min | uncovered ${data.before.uncovered_nodes}</div></div>
+        <div class="result-row"><div class="result-title">After</div><div class="result-meta">Avg ${data.after.avg_min} min | worst ${data.after.worst_case_min} min | uncovered ${data.after.uncovered_nodes}</div></div>
+      `;
+      document.getElementById("xai").innerHTML = `<p>k-median facility siting chooses ${data.k} nodes that reduce population-weighted response time. The optimizer improved average response by ${data.improvement_pct}%.</p>`;
+      setStatus(`Facility siting complete. Run ID ${data.run_id}`);
+    }
+
+    function loadCivicDemo() {
+      document.getElementById("civic-type").value = "hospital";
+      document.getElementById("civic-k").value = "4";
+      setStatus("Demo loaded: optimize 4 new clinic/service sites across BBMP ward demand.");
+      document.getElementById("xai").innerHTML = `<p>Demo task: choose 4 new civic service sites using BBMP ward population, existing facilities, and road-network travel time. The optimizer compares a greedy baseline against a knowledge-guided swap policy.</p>`;
+    }
+
+    async function runCivicOptimizer() {
+      setStatus("Running 2024 civic service optimizer...");
+      routeLayer.clearLayers();
+      const res = await fetch("/api/impact/civic-service-optimizer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          city_id: "bengaluru",
+          facility_type: document.getElementById("civic-type").value,
+          k: parseInt(document.getElementById("civic-k").value, 10),
+          candidate_pool: 90,
+          max_iterations: 18,
+          equity_weight: 0.38,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Civic optimizer failed");
+
+      for (const ward of data.worst_served_wards || []) {
+        L.circleMarker([ward.lat, ward.lon], {
+          radius: ward.served_under_10_min ? 5 : 8,
+          fillColor: ward.served_under_10_min ? "#F59E0B" : "#E24B4A",
+          color: "#111827",
+          weight: 1,
+          fillOpacity: 0.82,
+        }).bindPopup(`${ward.ward_name}<br>${ward.travel_minutes} min to nearest service`).addTo(routeLayer);
+      }
+      for (const rec of data.recommendations || []) {
+        L.circleMarker([rec.lat, rec.lon], {
+          radius: 12,
+          fillColor: "#34D399",
+          color: "#fff",
+          weight: 2,
+          fillOpacity: 0.96,
+        }).bindPopup(`Recommended ${data.facility_type}: ${rec.name}<br>street count ${rec.street_count}`).addTo(routeLayer);
+      }
+
+      document.getElementById("m-distance").textContent = `${data.improvement_pct}%`;
+      document.getElementById("m-time").textContent = `${data.optimized.weighted_avg_minutes} min`;
+      document.getElementById("m-ops").textContent = data.data_used.candidate_sites;
+      document.getElementById("m-risk").textContent = data.optimized.gini_access_inequality;
+      document.getElementById("results").innerHTML = `
+        <div class="result-row"><div class="result-title">Current civic coverage baseline</div><div class="result-meta">Objective ${data.baseline.objective_score} | avg ${data.baseline.weighted_avg_minutes} min | worst ${data.baseline.worst_minutes} min | inequality ${data.baseline.gini_access_inequality}</div></div>
+        <div class="result-row"><div class="result-title">Greedy k-median comparison</div><div class="result-meta">Objective ${data.greedy_baseline.objective_score} | avg ${data.greedy_baseline.weighted_avg_minutes} min | worst ${data.greedy_baseline.worst_minutes} min | inequality ${data.greedy_baseline.gini_access_inequality}</div></div>
+        <div class="result-row"><div class="result-title">Knowledge-guided optimized plan</div><div class="result-meta">Objective ${data.optimized.objective_score} | avg ${data.optimized.weighted_avg_minutes} min | worst ${data.optimized.worst_minutes} min | inequality ${data.optimized.gini_access_inequality}</div></div>
+        ${(data.trace || []).slice(0, 5).map(step => `<div class="result-row"><div class="result-title">${step.phase} step ${step.step}</div><div class="result-meta">${step.why}</div></div>`).join("")}
+      `;
+      document.getElementById("xai").innerHTML = `
+        ${(data.xai_steps || []).map(step => `<p>${step}</p>`).join("")}
+        <p><strong>Research basis:</strong> ${data.algorithm.research_basis.title} (${data.algorithm.research_basis.year}). ${data.algorithm.research_basis.note}</p>
+        <p><strong>Data used:</strong> ${data.data_used.wards} BBMP wards, ${data.data_used.candidate_sites} candidate sites, ${data.data_used.existing_facilities} existing facilities, and ${data.data_used.road_nodes}/${data.data_used.road_edges} road graph nodes/edges.</p>
+      `;
+      setStatus(`Civic optimizer complete. Run ID ${data.run_id}`);
+    }
+
+    async function runTransit() {
+      setStatus("Analyzing transit equity...");
+      const res = await fetch("/api/impact/transit-equity?city_id=bengaluru", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Transit equity failed");
+      const rows = data.underserved_wards || [];
+      routeLayer.clearLayers();
+      for (const w of rows) {
+        L.circleMarker([w.lat, w.lon], {
+          radius: Math.min(13, 5 + w.desert_index),
+          fillColor: w.classification.includes("Severe") ? "#E24B4A" : w.classification.includes("Moderate") ? "#FFD166" : "#34D399",
+          color: "#111827",
+          weight: 1,
+          fillOpacity: 0.88,
+        }).bindPopup(`${w.ward_name}<br>Transit desert index: ${w.desert_index}<br>${w.xai_reason}`).addTo(routeLayer);
+      }
+      document.getElementById("results").innerHTML = rows.map(w => `
+        <div class="result-row">
+          <div class="result-title">${w.ward_name || w.ward_id}</div>
+          <div class="result-meta">Population ${w.population} | stops ${w.stop_count} | PageRank ${w.avg_centrality} | index ${w.desert_index} | ${w.classification}<br>${w.xai_reason}</div>
+        </div>
+      `).join("");
+      document.getElementById("m-distance").textContent = rows.length;
+      document.getElementById("m-time").textContent = rows[0]?.stop_count ?? "--";
+      document.getElementById("m-ops").textContent = "PageRank";
+      document.getElementById("m-risk").textContent = rows[0]?.desert_index ?? "--";
+      document.getElementById("xai").innerHTML = (data.xai_steps || []).map(step => `<p>${step}</p>`).join("");
+      setStatus(`Transit equity complete. Run ID ${data.run_id}`);
+    }
+
+    async function runExperiment() {
+      try {
+        if (mode === "route") await runRouteLab();
+        else if (mode === "civic") await runCivicOptimizer();
+        else if (mode === "resilience") await runResilience();
+        else if (mode === "facility") await runFacility();
+        else await runTransit();
+      } catch (err) {
+        setStatus(err.message);
+        document.getElementById("xai").innerHTML = `<p>${err.message}</p>`;
+      }
+    }
+
+    function resetSelections() {
+      selected = { start: null, end: null };
+      floodedNodes.clear();
+      routeLayer.clearLayers();
+      markerLayer.clearLayers();
+      startMarker = null;
+      endMarker = null;
+      drawGraph();
+      document.getElementById("results").innerHTML = "";
+      document.getElementById("xai").innerHTML = `<p>Selections reset. Choose a fresh experiment.</p>`;
+      setStatus("Selections reset.");
+    }
+
+    async function loadGraph() {
+      map = L.map("map").setView([12.9716, 77.5946], 12);
+      L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+        attribution: "OpenStreetMap, CARTO",
+      }).addTo(map);
+      graphLayer = L.layerGroup().addTo(map);
+      routeLayer = L.layerGroup().addTo(map);
+      markerLayer = L.layerGroup().addTo(map);
+      fillLandmarks();
+
+      const res = await fetch("/api/load-city", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ city_id: "bengaluru", apply_weather: false, include_pois: true }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Could not load Bengaluru graph");
+      graphData = data.graph;
+      drawGraph();
+      const bounds = L.latLngBounds((graphData.nodes || []).map(n => [n.lat, n.lon]));
+      if (bounds.isValid()) map.fitBounds(bounds.pad(0.08));
+      const q = graphData.data_quality || {};
+      document.getElementById("quality-box").innerHTML = `
+        Source: <strong style="color:${q.is_live_or_cached_osm ? "#34D399" : "#F87171"}">${q.source || data.source}</strong>
+        ${q.warning ? `<div class="${q.is_live_or_cached_osm ? "subtle" : "warning"}">${q.warning}</div>` : ""}
+      `;
+      setStatus(`Loaded Bengaluru graph: ${data.node_count} intersections, ${data.edge_count} roads.`);
+    }
+
+    loadGraph().catch(err => {
+      setStatus(err.message);
+      document.getElementById("xai").innerHTML = `<p>${err.message}</p>`;
+    });
   </script>
 </body>
 </html>

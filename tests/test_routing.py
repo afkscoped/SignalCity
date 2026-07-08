@@ -1,3 +1,4 @@
+import asyncio
 import os
 import sys
 import pytest
@@ -8,13 +9,13 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 from pipeline.city_loader import load_city_graph
 from pipeline.geocoder import geocode_place, snap_to_node
+from pipeline.routing_engine import compare_routes, plan_route
 from routers.algorithms import _dijkstra_result, _node_pair, _graph_from_data
 
 
-@pytest.mark.asyncio
-async def test_bengaluru_routing_pairs():
+def test_bengaluru_routing_pairs():
     # Load Bengaluru Graph
-    graph_data = await load_city_graph("bengaluru")
+    graph_data = asyncio.run(load_city_graph("bengaluru"))
     assert graph_data is not None
     assert "nodes" in graph_data
     assert "edges" in graph_data
@@ -90,9 +91,8 @@ async def test_bengaluru_routing_pairs():
     assert len(set(resolved_paths)) == len(pairs), "Paths are not distinct!"
 
 
-@pytest.mark.asyncio
-async def test_determinism_and_caching():
-    graph_data = await load_city_graph("bengaluru")
+def test_determinism_and_caching():
+    graph_data = asyncio.run(load_city_graph("bengaluru"))
     nx_graph = _graph_from_data(graph_data)
 
     params = {"source_name": "HSR Layout", "dest_name": "Koramangala", "city_id": "bengaluru"}
@@ -101,3 +101,25 @@ async def test_determinism_and_caching():
     res2 = _dijkstra_result(nx_graph, params, graph_data)
 
     assert res1["path"] == res2["path"], "Routing is non-deterministic!"
+
+
+def test_route_engine_requires_two_explicit_points():
+    graph_data = asyncio.run(load_city_graph("bengaluru"))
+    with pytest.raises(Exception):
+        plan_route(graph_data, {"algorithm": "dijkstra", "source_name": "HSR Layout", "city_id": "bengaluru"})
+
+
+def test_route_engine_compare_real_endpoint_pair():
+    graph_data = asyncio.run(load_city_graph("bengaluru"))
+    results = compare_routes(
+        graph_data,
+        {"source_name": "HSR Layout", "dest_name": "Koramangala", "city_id": "bengaluru"},
+        ["dijkstra", "astar", "risk_aware"],
+    )
+    assert len(results) == 3
+    for row in results:
+        assert row["path"]
+        assert row["length_km"] > 0
+        assert row["travel_minutes"] > 0
+        assert row["settled_nodes"] > 0
+        assert row["xai_text"]

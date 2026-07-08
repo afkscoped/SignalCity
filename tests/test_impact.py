@@ -115,3 +115,61 @@ def test_ward_specific_impact():
     assert response_backbone.status_code == 200
     assert response_backbone.json()["mst_cost_inr"] <= response_backbone.json()["full_mesh_cost_inr"]
 
+
+def test_route_lab_endpoint_returns_map_ready_paths():
+    payload = {
+        "city_id": "bengaluru",
+        "source_name": "HSR Layout",
+        "dest_name": "Koramangala",
+        "algorithms": ["dijkstra", "astar", "risk_aware"]
+    }
+    response = client.post("/api/impact/route-lab", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["problem_type"] == "route_lab"
+    assert len(data["results"]) == 3
+    for row in data["results"]:
+        assert row["path"]
+        assert row["path_coordinates"]
+        assert {"lat", "lon", "node_id"}.issubset(row["path_coordinates"][0].keys())
+        assert row["xai_text"]
+
+
+def test_civic_service_optimizer_research_endpoint():
+    payload = {
+        "city_id": "bengaluru",
+        "facility_type": "hospital",
+        "k": 3,
+        "candidate_pool": 50,
+        "max_iterations": 6
+    }
+    response = client.post("/api/impact/civic-service-optimizer", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["problem_type"] == "civic_service_optimizer"
+    assert data["algorithm"]["research_basis"]["year"] == 2024
+    assert len(data["recommendations"]) == 3
+    assert data["baseline"]["objective_score"] >= data["optimized"]["objective_score"]
+    assert data["worst_served_wards"]
+    assert data["xai_steps"]
+
+
+def test_resilience_ksp_research_endpoint():
+    payload = {
+        "city_id": "bengaluru",
+        "source_name": "Jayanagar",
+        "dest_name": "MG Road",
+        "k": 3,
+        "flooded_nodes": []
+    }
+    response = client.post("/api/impact/resilience-ksp", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["problem_type"] == "resilience_ksp"
+    assert data["research_basis"]["year"] == 2023
+    assert len(data["routes"]) >= 2
+    for route in data["routes"]:
+        assert route["path"]
+        assert route["path_coordinates"]
+        assert route["resilience_score"] >= 0
+        assert "overlap_with_best" in route

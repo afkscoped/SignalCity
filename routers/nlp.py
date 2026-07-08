@@ -66,11 +66,35 @@ def _regex_parse(text: str) -> dict:
 
     # First, try to extract places for routing queries
     source_name, dest_name = _extract_places(text)
+    params = {}
+    if source_name and dest_name:
+        params["source_name"] = source_name
+        params["dest_name"] = dest_name
+
+    k_match = re.search(r"\b(?:k|choose|place|select|site)\s*=?\s*(\d{1,2})\b", lowered)
+    if k_match:
+        params["k"] = max(1, min(20, int(k_match.group(1))))
+
+    radius_match = re.search(r"\b(\d+(?:\.\d+)?)\s*km\b", lowered)
+    if radius_match:
+        params["scope"] = {
+            "mode": "radius" if not (source_name and dest_name) else "selection",
+            "radius_km": float(radius_match.group(1)),
+            "max_nodes": 1800,
+        }
+    elif re.search(r"\b(near|around|within|corridor|local|selected|ward|area)\b", lowered):
+        params["scope"] = {"mode": "selection", "radius_km": 5.0, "max_nodes": 1800}
+    elif re.search(r"\b(whole city|entire city|full city|all bengaluru|city-wide|citywide)\b", lowered):
+        params["scope"] = {"mode": "all", "max_nodes": 9000}
 
     patterns = [
-        (r"power|grid|connect|mst|minimum|prim", "prim", "Build a minimum spanning tree for the grid."),
+        (r"kruskal|spanning forest", "kruskal", "Build Kruskal's minimum spanning forest."),
+        (r"power|grid|connect|mst|minimum|prim", "prim", "Build a minimum spanning tree for the selected infrastructure scope."),
         (r"kruskal|spanning forest", "kruskal", "Build Kruskal's minimum spanning forest."),
         (r"shortest|route|path|dijkstra|travel|distance|navigate|direction", "dijkstra", "Find the shortest route."),
+        (r"\ba\*|astar|a-star", "astar", "Run A* goal-directed routing."),
+        (r"risk|safer|crash|blackspot|accident", "risk_aware", "Run crash-risk-aware routing."),
+        (r"flood|monsoon|blocked|closure|reroute", "flood_aware", "Run flood-aware rerouting."),
         (r"flow|traffic|max|throughput|edmonds|karp", "edmonds_karp", "Maximize flow through the network."),
         (r"zone|district|community|cluster|leiden|louvain", "leiden", "Detect city communities."),
         (r"hospital|facility|median|placement|k-median|kmedian", "k_median", "Place facilities efficiently."),
@@ -90,19 +114,22 @@ def _regex_parse(text: str) -> dict:
             result = {
                 "intent": "run_algorithm",
                 "algorithm": algorithm,
-                "params": {},
+                "params": dict(params),
                 "source": "regex",
                 "confidence": 0.7,
                 "explanation": explanation,
             }
             # Attach extracted place names if found
             if source_name and dest_name:
-                result["params"]["source_name"] = source_name
-                result["params"]["dest_name"] = dest_name
                 result["confidence"] = 0.85
                 result["explanation"] = (
-                    f"Find the shortest route from {source_name} to {dest_name}."
+                    f"{explanation} Source: {source_name}; destination: {dest_name}."
                 )
+            if "scope" in params:
+                result["confidence"] = max(result["confidence"], 0.82)
+                result["explanation"] += f" Scope: {params['scope']['mode']}."
+            if "k" in params:
+                result["explanation"] += f" k={params['k']}."
             return result
 
     # If we found places but no algorithm keyword, default to dijkstra
@@ -110,10 +137,7 @@ def _regex_parse(text: str) -> dict:
         return {
             "intent": "run_algorithm",
             "algorithm": "dijkstra",
-            "params": {
-                "source_name": source_name,
-                "dest_name": dest_name,
-            },
+            "params": params,
             "source": "regex",
             "confidence": 0.8,
             "explanation": f"Find the shortest route from {source_name} to {dest_name}.",

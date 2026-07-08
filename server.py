@@ -19,6 +19,7 @@ from database.connection import close_db, connect_db, is_memory_mode
 from routers.algorithms import ALGORITHMS, dispatch_algorithm, _graph_from_data
 from routers.city import get_cached_city
 from routers import algorithms, city, game, nlp, impact
+from pipeline.graph_scope import scope_graph_data
 
 load_dotenv()
 
@@ -52,7 +53,7 @@ def _page(path: str):
 
 @app.get("/")
 async def serve_index():
-    return _page("static/index.html")
+    return _page("static/mode-select.html")
 
 
 @app.get("/auth")
@@ -93,11 +94,11 @@ async def health():
 
 
 LEVEL_UNLOCKS = {
-    1: ["prim", "dijkstra", "fcfs", "edf"],
-    2: ["kruskal", "sjf", "round_robin"],
-    3: ["edmonds_karp", "pagerank", "gwo", "alo", "woa", "mfo", "ssa", "aoa", "transformer", "raft_consensus", "count_sketch"],
-    4: ["leiden", "louvain", "hho", "run_optimizer", "mpa", "goa", "sma", "swin", "xgboost", "rmi"],
-    5: ["contraction", "k_median", "coa", "ptbo", "ao", "do", "gto", "kan", "diffusion"],
+    1: ["dijkstra", "prim", "kruskal"],
+    2: ["astar", "edmonds_karp"],
+    3: ["risk_aware", "flood_aware", "pagerank"],
+    4: ["leiden", "k_median"],
+    5: ["contraction"],
 }
 
 def _unlock_algos_for_level(user: dict, new_level: int, current_unlocked: list) -> list:
@@ -645,6 +646,7 @@ async def ws_algorithm(websocket: WebSocket):
             except Exception as w_err:
                 print(f"Error applying weather to graph in WebSocket: {w_err}")
 
+            graph_data = scope_graph_data(graph_data, params)
             graph = _graph_from_data(graph_data)
 
             try:
@@ -686,6 +688,7 @@ async def ws_algorithm(websocket: WebSocket):
                     "city_id": city_id,
                     "node_count": graph_data.get("node_count", graph.node_count if hasattr(graph, 'node_count') else len(graph.nodes)),
                     "edge_count": graph_data.get("edge_count", graph.edge_count if hasattr(graph, 'edge_count') else len(graph.edges)),
+                    "scope": graph_data.get("scope", {"mode": "all"}),
                     "efficiency_score": round(efficiency, 1),
                     "grade": grade,
                     "ratio": round(ratio, 3),
@@ -761,10 +764,15 @@ async def ws_algorithm(websocket: WebSocket):
                     "summary": summary
                 })
 
+            except WebSocketDisconnect:
+                break
             except Exception as exc:
                 import traceback
                 traceback.print_exc()
-                await websocket.send_json({"type": "error", "message": f"Execution error: {str(exc)}"})
+                try:
+                    await websocket.send_json({"type": "error", "message": f"Execution error: {str(exc)}"})
+                except Exception:
+                    pass
 
     except WebSocketDisconnect:
         pass

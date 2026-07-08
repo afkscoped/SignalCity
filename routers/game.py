@@ -205,3 +205,68 @@ async def run_security_game(payload: dict):
         "cut_edges": cut_edges,
         "explanation": explanation
     }
+
+
+@router.post("/evaluate")
+async def evaluate_city(payload: dict):
+    """
+    Research-driven city evaluation API. Calculates Gini inequality of access 
+    and connectivity robustness for the isometric custom city.
+    """
+    nodes = payload.get("nodes", [])
+    edges = payload.get("edges", [])
+    
+    if not nodes:
+        return {"status": "ok", "metrics": {}}
+        
+    G = nx.Graph()
+    for n in nodes:
+        G.add_node(n["id"], type=n.get("type", "residential"), q=n.get("q", 0), r=n.get("r", 0))
+    for e in edges:
+        u = e.get("source", e.get("u"))
+        v = e.get("target", e.get("v"))
+        G.add_edge(u, v)
+        
+    # 1. Connectivity Robustness
+    avg_degree = sum(dict(G.degree()).values()) / max(len(nodes), 1)
+    robustness = min(100, (avg_degree / 3.0) * 100) # Hex grid max degree is 6, 3 is very connected
+    
+    # 2. Gini Inequality of Access (15-min city proxy)
+    residential = [n for n, d in G.nodes(data=True) if d.get("type") == "residential"]
+    facilities = [n for n, d in G.nodes(data=True) if d.get("type") in {"hospital", "school", "water_tower", "power_plant"}]
+    
+    access_distances = []
+    if not facilities:
+        gini = 1.0
+        avg_dist = 999.0
+    else:
+        for r in residential:
+            min_dist = 999.0
+            for f in facilities:
+                try:
+                    dist = nx.shortest_path_length(G, r, f)
+                    if dist < min_dist:
+                        min_dist = dist
+                except nx.NetworkXNoPath:
+                    pass
+            access_distances.append(min_dist if min_dist != 999.0 else float(len(nodes)))
+        
+        if not access_distances:
+            gini = 0.0
+            avg_dist = 0.0
+        else:
+            avg_dist = sum(access_distances) / len(access_distances)
+            diff_sum = sum(abs(xi - xj) for xi in access_distances for xj in access_distances)
+            gini = diff_sum / (2 * len(access_distances) * sum(access_distances) + 0.0001)
+
+    return {
+        "status": "ok",
+        "metrics": {
+            "robustness": round(robustness, 1),
+            "gini_inequality": round(gini, 3),
+            "avg_access_hops": round(avg_dist, 1),
+            "total_facilities": len(facilities)
+        },
+        "explanation": "Evaluated city based on 15-Minute City metrics. Lower Gini means more equitable access."
+    }
+
