@@ -1571,6 +1571,43 @@
       });
       document.getElementById('report-section').style.display = 'none';
       setStatus('Ready');
+      clearStats();
+    }
+
+    function clearStats() {
+      const el = document.getElementById('algo-stats');
+      if (el) {
+        el.innerHTML = `
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;">
+            <div><span class="text-muted text-xs">Algorithm</span><br><strong style="font-size:11px;">-</strong></div>
+            <div><span class="text-muted text-xs">Wall Time</span><br><strong style="font-size:11px;">0ms</strong></div>
+            <div><span class="text-muted text-xs">Complexity</span><br><strong style="font-size:11px;color:var(--gold);">-</strong></div>
+            <div><span class="text-muted text-xs">Operations</span><br><strong style="font-size:11px;">0</strong></div>
+            <div><span class="text-muted text-xs">Nodes (V)</span><br><strong style="font-size:11px;">0</strong></div>
+            <div><span class="text-muted text-xs">Edges (E)</span><br><strong style="font-size:11px;">-</strong></div>
+          </div>`;
+      }
+      const bigoOps = document.getElementById('bigo-ops');
+      if (bigoOps) bigoOps.textContent = '0';
+      const bigoTheoretical = document.getElementById('bigo-theoretical');
+      if (bigoTheoretical) bigoTheoretical.textContent = '-';
+      const bigoRatio = document.getElementById('bigo-ratio');
+      if (bigoRatio) bigoRatio.textContent = '0.00x';
+      const bigoFill = document.getElementById('bigo-fill');
+      if (bigoFill) {
+        bigoFill.style.width = '0%';
+        bigoFill.style.background = 'var(--teal)';
+      }
+      
+      const xaiScrubber = document.getElementById('xai-scrubber');
+      if (xaiScrubber) {
+        xaiScrubber.max = 0;
+        xaiScrubber.value = 0;
+      }
+      const xaiStepCurr = document.getElementById('xai-step-curr');
+      if (xaiStepCurr) xaiStepCurr.textContent = 'Step: 0';
+      const xaiStepTotal = document.getElementById('xai-step-total');
+      if (xaiStepTotal) xaiStepTotal.textContent = 'Total: 0';
     }
 
     // ═══════════════════════════════════════════════════════════════════
